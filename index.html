@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finanzas personales — teoría y libro de cuentas</title>
+<meta name="description" content="Curso breve de finanzas personales y aplicativo para llevar tus cuentas en tablas y gráficos. Cálculo local, sin envío de datos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ============ 1. TOKENS ============ */
+:root{
+  --tinta:#16202B; --tinta-70:#4A5560; --tinta-45:#7C848C;
+  --papel:#FCFBF8; --banda:#F2EFE8; --regla:#D9D3C7; --regla-fuerte:#B9B1A2;
+  --sello:#5B3FA8; --sello-suave:#EFEBFA;
+  --verde:#1E7A5A; --rojo:#A82E1E; --ambar:#B07C10;
+  --verde-suave:#E7F2ED; --rojo-suave:#FAEBE8; --ambar-suave:#FBF3E0;
+  --display:'Bitter',Georgia,serif;
+  --texto:'Public Sans',system-ui,-apple-system,sans-serif;
+  --cifra:'IBM Plex Mono',ui-monospace,monospace;
+  --max:1180px; --r:3px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{
+  margin:0; background:var(--papel); color:var(--tinta);
+  font:400 16px/1.65 var(--texto); -webkit-text-size-adjust:100%;
+}
+h1,h2,h3,h4{font-family:var(--display); line-height:1.2; margin:0 0 .5em; letter-spacing:-.01em}
+h1{font-size:clamp(2rem,5.5vw,3.4rem); font-weight:800}
+h2{font-size:clamp(1.5rem,3.4vw,2.1rem); font-weight:700}
+h3{font-size:1.13rem; font-weight:700}
+p{margin:0 0 1em}
+a{color:var(--sello)}
+.wrap{max-width:var(--max); margin:0 auto; padding:0 20px}
+.num{font-family:var(--cifra); font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+.eyebrow{font:600 .72rem/1 var(--texto); letter-spacing:.16em; text-transform:uppercase; color:var(--tinta-45); margin:0 0 .9rem}
+.pos{color:var(--verde)} .neg{color:var(--rojo)} .warn{color:var(--ambar)}
+:focus-visible{outline:2.5px solid var(--sello); outline-offset:2px}
+
+/* ============ 2. BARRA SUPERIOR ============ */
+.topbar{
+  position:sticky; top:0; z-index:50; background:rgba(252,251,248,.94);
+  backdrop-filter:blur(8px); border-bottom:1px solid var(--regla);
+}
+.topbar .wrap{display:flex; align-items:center; gap:24px; height:58px}
+.marca{font-family:var(--display); font-weight:800; font-size:1.02rem; white-space:nowrap}
+.marca span{color:var(--sello)}
+.topnav{margin-left:auto; display:flex; gap:22px; min-width:0; overflow-x:auto; scrollbar-width:none}
+.topnav::-webkit-scrollbar{display:none}
+.topnav a{
+  color:var(--tinta-70); text-decoration:none; font-size:.88rem; font-weight:500;
+  padding:4px 0; border-bottom:2px solid transparent;
+}
+.topnav a:hover{color:var(--tinta); border-bottom-color:var(--sello)}
+@media(max-width:640px){.topbar .wrap{gap:12px}.topnav{gap:14px}.topnav a{font-size:.8rem}.marca{font-size:.9rem}}
+@media(max-width:430px){.topbar .wrap{padding:0 14px}.marca span{display:none}.topnav{gap:12px}}
+
+/* ============ 3. PORTADA ============ */
+.hero{padding:72px 0 56px; border-bottom:1px solid var(--regla)}
+.hero-grid{display:grid; grid-template-columns:1.08fr .92fr; gap:56px; align-items:center}
+.hero p.lead{font-size:1.1rem; color:var(--tinta-70); max-width:44ch}
+.acciones{display:flex; flex-wrap:wrap; gap:12px; margin-top:26px}
+.btn{
+  font:600 .92rem var(--texto); padding:11px 20px; border-radius:var(--r); cursor:pointer;
+  border:1.5px solid var(--tinta); background:var(--tinta); color:var(--papel); text-decoration:none;
+  display:inline-block; transition:.15s;
+}
+.btn:hover{background:var(--sello); border-color:var(--sello)}
+.btn.sec{background:transparent; color:var(--tinta)}
+.btn.sec:hover{background:var(--tinta); color:var(--papel)}
+.btn.mini{padding:7px 13px; font-size:.82rem}
+.btn.peligro{border-color:var(--rojo); background:transparent; color:var(--rojo)}
+.btn.peligro:hover{background:var(--rojo); color:#fff}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+
+/* muestra de libro mayor en la portada */
+.libro{border:1px solid var(--regla-fuerte); background:#fff; padding:0; border-radius:var(--r); overflow:hidden}
+.libro-cab{
+  background:var(--tinta); color:var(--papel); padding:10px 16px;
+  font:600 .72rem var(--texto); letter-spacing:.14em; text-transform:uppercase;
+  display:flex; justify-content:space-between;
+}
+.libro table{width:100%; border-collapse:collapse; font-size:.88rem}
+.libro td{padding:9px 16px; border-bottom:1px solid var(--regla)}
+.libro td:last-child{text-align:right; font-family:var(--cifra); font-variant-numeric:tabular-nums}
+.libro tr:nth-child(even) td{background:var(--banda)}
+.libro tr.total td{
+  border-top:1.5px solid var(--tinta); border-bottom:3.5px double var(--tinta);
+  font-weight:600; background:#fff!important;
+}
+@media(max-width:820px){.hero-grid{grid-template-columns:1fr; gap:34px}.hero{padding:48px 0 40px}}
+
+/* ============ 4. SECCIONES ============ */
+section.bloque{padding:64px 0; border-bottom:1px solid var(--regla)}
+.cab-seccion{max-width:62ch; margin-bottom:34px}
+.cab-seccion p{color:var(--tinta-70)}
+
+/* aviso */
+.aviso{
+  border-left:3px solid var(--sello); background:var(--sello-suave);
+  padding:14px 18px; border-radius:0 var(--r) var(--r) 0; margin-bottom:32px; font-size:.92rem;
+}
+.aviso strong{font-weight:600}
+
+/* ============ 5. TEORÍA (acordeón) ============ */
+.temario{border-top:1.5px solid var(--tinta)}
+details.tema{border-bottom:1px solid var(--regla)}
+details.tema summary{
+  display:flex; gap:18px; align-items:baseline; padding:16px 4px; cursor:pointer;
+  list-style:none; font-family:var(--display); font-weight:700; font-size:1.05rem;
+}
+details.tema summary::-webkit-details-marker{display:none}
+details.tema summary::after{
+  content:'+'; margin-left:auto; font-family:var(--cifra); font-size:1.2rem; color:var(--sello);
+}
+details.tema[open] summary::after{content:'–'}
+details.tema summary:hover{color:var(--sello)}
+.folio{
+  font-family:var(--cifra); font-size:.82rem; color:var(--sello); font-weight:600;
+  min-width:2.4ch; flex:none;
+}
+.tema-cuerpo{padding:0 4px 24px calc(2.4ch + 18px); max-width:74ch}
+.tema-cuerpo p{font-size:.96rem}
+@media(max-width:640px){.tema-cuerpo{padding-left:4px}}
+.formula{
+  font-family:var(--cifra); background:#fff; border:1px solid var(--regla);
+  border-left:3px solid var(--tinta); padding:11px 15px; margin:14px 0; font-size:.9rem;
+  border-radius:0 var(--r) var(--r) 0; overflow-x:auto;
+}
+.ejemplo{
+  background:var(--banda); padding:13px 16px; border-radius:var(--r); font-size:.9rem; margin:14px 0;
+}
+.ejemplo b{font-family:var(--texto); font-weight:600; display:block; margin-bottom:3px; font-size:.74rem;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--tinta-45)}
+
+/* ============ 6. APLICATIVO ============ */
+.barra-datos{
+  display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-bottom:22px;
+  padding-bottom:20px; border-bottom:1px dashed var(--regla-fuerte);
+}
+.barra-datos .nota{font-size:.8rem; color:var(--tinta-45); margin:0 0 0 auto}
+@media(max-width:700px){.barra-datos .nota{margin-left:0; width:100%}}
+
+.tabs{display:flex; gap:2px; border-bottom:1.5px solid var(--tinta); overflow-x:auto; scrollbar-width:thin}
+.tab{
+  font:600 .87rem var(--texto); padding:11px 17px; border:0; background:transparent; cursor:pointer;
+  color:var(--tinta-70); white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-1.5px;
+}
+.tab:hover{color:var(--tinta); background:var(--banda)}
+.tab[aria-selected="true"]{color:var(--sello); border-bottom-color:var(--sello)}
+.panel{padding-top:30px}
+.panel[hidden]{display:none}
+
+/* formularios */
+.forma{
+  display:grid; gap:12px; background:#fff; border:1px solid var(--regla);
+  padding:18px; border-radius:var(--r); margin-bottom:24px;
+}
+.forma.c6{grid-template-columns:repeat(6,1fr)}
+.forma.c4{grid-template-columns:repeat(4,1fr)}
+.forma.c3{grid-template-columns:repeat(3,1fr)}
+.forma.c2{grid-template-columns:repeat(2,1fr)}
+.campo{display:flex; flex-direction:column; gap:5px; min-width:0}
+.campo label{font:600 .73rem var(--texto); letter-spacing:.06em; text-transform:uppercase; color:var(--tinta-45)}
+.campo .hint{font-size:.74rem; color:var(--tinta-45); font-weight:400; text-transform:none; letter-spacing:0}
+input,select{
+  font:400 .93rem var(--texto); padding:9px 11px; border:1px solid var(--regla-fuerte);
+  border-radius:var(--r); background:var(--papel); color:var(--tinta); width:100%; min-width:0;
+}
+input[type=number]{font-family:var(--cifra); text-align:right}
+input:focus,select:focus{border-color:var(--sello); background:#fff}
+.campo.chk{flex-direction:row; align-items:center; gap:8px}
+.campo.chk input{width:auto}
+.campo.chk label{text-transform:none; letter-spacing:0; font-size:.88rem; color:var(--tinta)}
+.forma .fin{align-self:end}
+@media(max-width:900px){.forma.c6{grid-template-columns:repeat(3,1fr)}.forma.c4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.forma.c6,.forma.c4,.forma.c3,.forma.c2{grid-template-columns:1fr}}
+
+/* tablas de trabajo */
+.tabla-caja{border:1px solid var(--regla-fuerte); border-radius:var(--r); overflow:auto; background:#fff; max-height:520px}
+table.cuadro{width:100%; border-collapse:collapse; font-size:.89rem; min-width:640px}
+table.cuadro thead th{
+  position:sticky; top:0; z-index:2; background:var(--tinta); color:var(--papel);
+  font:600 .71rem var(--texto); letter-spacing:.1em; text-transform:uppercase;
+  padding:10px 12px; text-align:left; white-space:nowrap;
+}
+table.cuadro thead th.der{text-align:right}
+table.cuadro tbody td{padding:8px 12px; border-bottom:1px solid var(--regla); vertical-align:middle}
+table.cuadro tbody tr:nth-child(even) td{background:var(--banda)}
+table.cuadro tbody tr:hover td{background:var(--sello-suave)}
+table.cuadro td.der{text-align:right; font-family:var(--cifra); font-variant-numeric:tabular-nums; white-space:nowrap}
+table.cuadro tfoot td{
+  padding:10px 12px; font-weight:600; background:#fff;
+  border-top:1.5px solid var(--tinta); border-bottom:3.5px double var(--tinta);
+}
+table.cuadro tfoot td.der{text-align:right; font-family:var(--cifra); font-variant-numeric:tabular-nums}
+table.cuadro td input,table.cuadro td select{padding:5px 7px; font-size:.86rem}
+table.cuadro td input[type=number]{max-width:130px}
+.acc{background:none; border:0; cursor:pointer; color:var(--tinta-45); padding:3px 5px; font-size:.95rem; border-radius:var(--r)}
+.acc:hover{color:var(--rojo); background:var(--rojo-suave)}
+.vacio{padding:34px 20px; text-align:center; color:var(--tinta-45); font-size:.92rem}
+.leyenda-tabla{font-size:.78rem; color:var(--tinta-45); margin:9px 0 0}
+
+/* semáforo */
+.sem{
+  display:inline-flex; align-items:center; gap:6px; font:600 .76rem var(--texto);
+  padding:3px 9px; border-radius:100px; white-space:nowrap;
+}
+.sem::before{content:''; width:7px; height:7px; border-radius:50%; background:currentColor}
+.sem.ok{background:var(--verde-suave); color:var(--verde)}
+.sem.al{background:var(--ambar-suave); color:var(--ambar)}
+.sem.ex{background:var(--rojo-suave); color:var(--rojo)}
+
+/* tarjetas de indicadores */
+.indicadores{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:34px}
+@media(max-width:860px){.indicadores{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.indicadores{grid-template-columns:1fr}}
+.ind{border:1px solid var(--regla-fuerte); background:#fff; border-radius:var(--r); padding:16px 17px; border-top:3px solid var(--regla-fuerte)}
+.ind.ok{border-top-color:var(--verde)} .ind.al{border-top-color:var(--ambar)} .ind.ex{border-top-color:var(--rojo)}
+.ind h4{font:600 .74rem var(--texto); letter-spacing:.1em; text-transform:uppercase; color:var(--tinta-45); margin:0 0 8px}
+.ind .cifra{font-family:var(--cifra); font-variant-numeric:tabular-nums; font-size:1.85rem; font-weight:600; line-height:1.05}
+.ind .ref{font-size:.78rem; color:var(--tinta-45); margin:7px 0 0; display:block}
+.ind .form{font-family:var(--cifra); font-size:.72rem; color:var(--tinta-45); margin-top:5px; display:block}
+
+/* gráficos */
+.graficos{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+@media(max-width:800px){.graficos{grid-template-columns:1fr}}
+.grafico{border:1px solid var(--regla-fuerte); background:#fff; border-radius:var(--r); padding:17px}
+.grafico h4{font:600 .74rem var(--texto); letter-spacing:.1em; text-transform:uppercase; color:var(--tinta-45); margin:0 0 14px}
+.lienzo{position:relative; height:265px}
+.lienzo .sin-datos{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  text-align:center; color:var(--tinta-45); font-size:.87rem; padding:20px; background:var(--banda); border-radius:var(--r);
+}
+.lienzo[data-con-datos="1"] .sin-datos{display:none}
+
+/* resultados de simuladores */
+.resultado{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--regla-fuerte);
+  border:1px solid var(--regla-fuerte); border-radius:var(--r); overflow:hidden; margin:18px 0;
+}
+@media(max-width:560px){.resultado{grid-template-columns:1fr}}
+.resultado div{background:#fff; padding:15px 17px}
+.resultado dt{font:600 .72rem var(--texto); letter-spacing:.1em; text-transform:uppercase; color:var(--tinta-45); margin-bottom:6px}
+.resultado dd{margin:0; font-family:var(--cifra); font-variant-numeric:tabular-nums; font-size:1.35rem; font-weight:600}
+.bloque-sim{border-top:1px dashed var(--regla-fuerte); margin-top:38px; padding-top:30px}
+.bloque-sim:first-of-type{border-top:0; margin-top:0; padding-top:0}
+.msg{font-size:.88rem; padding:11px 15px; border-radius:var(--r); margin:14px 0}
+.msg.err{background:var(--rojo-suave); color:var(--rojo); border-left:3px solid var(--rojo)}
+.msg.info{background:var(--banda); color:var(--tinta-70)}
+details.amort{margin-top:16px}
+details.amort summary{cursor:pointer; font-weight:600; font-size:.9rem; color:var(--sello); padding:7px 0}
+
+/* ============ 7. AUTOR ============ */
+#autor{background:var(--tinta); color:var(--papel); border-bottom:0}
+#autor h2,#autor h3{color:var(--papel)}
+#autor .eyebrow{color:rgba(252,251,248,.5)}
+#autor a{color:#C3B0F5}
+.autor-grid{display:grid; grid-template-columns:250px 1fr; gap:48px; align-items:start}
+@media(max-width:760px){.autor-grid{grid-template-columns:1fr; gap:30px}}
+.retrato{position:relative; width:220px; max-width:100%}
+.retrato img{
+  width:220px; height:220px; object-fit:cover; border-radius:50%;
+  border:3px solid rgba(252,251,248,.22); display:block; background:#2A3540;
+}
+.sello{
+  position:absolute; right:-26px; bottom:2px; width:118px; height:118px; border-radius:50%;
+  border:2.5px solid var(--sello); color:#C3B0F5; transform:rotate(-13deg);
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font:600 .55rem/1.35 var(--texto); letter-spacing:.1em; text-transform:uppercase;
+  padding:14px; background:rgba(22,32,43,.82);
+}
+.sello::before{content:''; position:absolute; inset:5px; border:1px solid rgba(91,63,168,.55); border-radius:50%}
+@media(max-width:760px){.sello{right:auto; left:170px}}
+.credencial{font-family:var(--display); font-weight:600; font-size:1.02rem; color:#C3B0F5; margin:-.2em 0 1.1em}
+.autor-grid p{color:rgba(252,251,248,.82); font-size:.95rem}
+.hoja{list-style:none; padding:0; margin:0 0 26px; border-top:1px solid rgba(252,251,248,.16)}
+.hoja li{
+  display:grid; grid-template-columns:150px 1fr; gap:20px; padding:12px 0;
+  border-bottom:1px solid rgba(252,251,248,.16); font-size:.92rem;
+}
+.hoja li b{
+  font:600 .71rem var(--texto); letter-spacing:.1em; text-transform:uppercase;
+  color:rgba(252,251,248,.5); padding-top:3px;
+}
+.hoja li span{color:rgba(252,251,248,.86)}
+@media(max-width:560px){.hoja li{grid-template-columns:1fr; gap:4px}}
+footer.pie{
+  background:var(--tinta); color:rgba(252,251,248,.45); font-size:.8rem;
+  padding:22px 0 34px; border-top:1px solid rgba(252,251,248,.16);
+}
+footer.pie .wrap{display:flex; flex-wrap:wrap; gap:14px; justify-content:space-between}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="marca">Finanzas <span>personales</span></div>
+    <nav class="topnav" aria-label="Secciones">
+      <a href="#teoria">Conceptos</a>
+      <a href="#app">Aplicativo</a>
+      <a href="#panel-f-link">Indicadores</a>
+      <a href="#autor">Autor</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ======== PORTADA ======== -->
+<section class="hero" id="portada">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Curso breve y libro de cuentas</p>
+      <h1>Primero la tabla.<br>Después el gráfico.</h1>
+      <p class="lead">Aprende los doce conceptos que sostienen unas finanzas personales ordenadas y registra tus propias cuentas en la misma página. Todo se calcula en tu navegador: ningún dato sale de tu equipo.</p>
+      <div class="acciones">
+        <a class="btn" href="#app">Ir al aplicativo</a>
+        <a class="btn sec" href="#teoria">Aprender los conceptos</a>
+      </div>
+    </div>
+    <div class="libro" aria-hidden="true">
+      <div class="libro-cab"><span>Estado del mes</span><span>S/</span></div>
+      <table>
+        <tr><td>Ingresos</td><td class="pos">5,400.00</td></tr>
+        <tr><td>Gastos</td><td class="neg">(4,120.00)</td></tr>
+        <tr><td>Ahorro e inversión</td><td>1,080.00</td></tr>
+        <tr class="total"><td>Superávit del mes</td><td class="pos">1,280.00</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ======== TEORÍA ======== -->
+<section class="bloque" id="teoria">
+  <div class="wrap">
+    <div class="cab-seccion">
+      <p class="eyebrow">Parte teórica</p>
+      <h2>Doce conceptos, en orden</h2>
+      <p>Cada tema incluye la fórmula cuando corresponde y un ejemplo numérico en soles. El orden es acumulativo: los primeros cuatro temas resuelven el día a día, los siguientes cuatro el costo del dinero y los últimos cuatro el largo plazo.</p>
+    </div>
+    <div class="aviso">
+      <strong>Contenido educativo.</strong> Este material no constituye asesoría financiera ni de inversión personalizada. Las decisiones sobre ahorro, deuda e inversión dependen de la situación particular de cada persona, su tolerancia al riesgo y su horizonte temporal. Para decisiones patrimoniales relevantes, consulta con un asesor autorizado.
+    </div>
+    <div class="temario" id="temario"></div>
+  </div>
+</section>
+
+<!-- ======== APLICATIVO ======== -->
+<section class="bloque" id="app">
+  <div class="wrap">
+    <div class="cab-seccion">
+      <p class="eyebrow">Aplicativo interactivo</p>
+      <h2>Tu libro de cuentas</h2>
+      <p>Registra tus movimientos en la tabla y el resto de la herramienta se recalcula solo: presupuesto, deudas, patrimonio, seis indicadores y seis gráficos. Los datos quedan guardados en este navegador.</p>
+    </div>
+
+    <div class="barra-datos">
+      <button class="btn mini sec" id="btn-demo">Cargar datos de ejemplo</button>
+      <button class="btn mini sec" id="btn-csv-exp">Exportar CSV</button>
+      <button class="btn mini sec" id="btn-csv-imp">Importar CSV</button>
+      <button class="btn mini sec" id="btn-json-exp">Copia completa (JSON)</button>
+      <button class="btn mini peligro" id="btn-borrar">Borrar todos los datos</button>
+      <input type="file" id="archivo-csv" accept=".csv,text/csv" hidden>
+      <p class="nota" id="estado-guardado">Cálculo local · sin envío de datos</p>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Módulos del aplicativo">
+      <button class="tab" role="tab" id="t-mov"  aria-controls="p-mov"  aria-selected="true">Movimientos</button>
+      <button class="tab" role="tab" id="t-pre"  aria-controls="p-pre"  aria-selected="false">Presupuesto</button>
+      <button class="tab" role="tab" id="t-deu"  aria-controls="p-deu"  aria-selected="false">Deudas</button>
+      <button class="tab" role="tab" id="t-pat"  aria-controls="p-pat"  aria-selected="false">Patrimonio neto</button>
+      <button class="tab" role="tab" id="t-sim"  aria-controls="p-sim"  aria-selected="false">Simuladores</button>
+      <button class="tab" role="tab" id="t-ind"  aria-controls="p-ind"  aria-selected="false">Indicadores y gráficos</button>
+    </div>
+
+    <!-- A. MOVIMIENTOS -->
+    <div class="panel" role="tabpanel" id="p-mov" aria-labelledby="t-mov">
+      <div class="forma c6">
+        <div class="campo"><label for="m-fecha">Fecha</label><input type="date" id="m-fecha"></div>
+        <div class="campo"><label for="m-tipo">Tipo</label>
+          <select id="m-tipo"><option value="Ingreso">Ingreso</option><option value="Gasto" selected>Gasto</option></select>
+        </div>
+        <div class="campo"><label for="m-cat">Categoría</label><select id="m-cat"></select></div>
+        <div class="campo"><label for="m-desc">Descripción</label><input type="text" id="m-desc" placeholder="Alquiler de julio"></div>
+        <div class="campo"><label for="m-monto">Monto (S/)</label><input type="number" id="m-monto" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="campo"><label for="m-medio">Medio de pago</label>
+          <select id="m-medio"><option>Efectivo</option><option>Débito</option><option>Crédito</option><option>Transferencia</option><option>Yape / Plin</option><option>Descuento por planilla</option></select>
+        </div>
+        <div class="campo fin" style="grid-column:1/-1"><button class="btn" id="btn-mov-add">Guardar movimiento</button></div>
+      </div>
+
+      <div class="forma c4" style="background:var(--banda)">
+        <div class="campo"><label for="f-mes">Mes</label><select id="f-mes"></select></div>
+        <div class="campo"><label for="f-tipo">Tipo</label>
+          <select id="f-tipo"><option value="">Todos</option><option>Ingreso</option><option>Gasto</option></select>
+        </div>
+        <div class="campo"><label for="f-cat">Categoría</label><select id="f-cat"></select></div>
+        <div class="campo"><label for="f-buscar">Buscar en descripción</label><input type="text" id="f-buscar" placeholder="Texto libre"></div>
+      </div>
+
+      <div class="tabla-caja">
+        <table class="cuadro" id="tb-mov">
+          <thead><tr>
+            <th data-orden="fecha">Fecha ⇅</th><th data-orden="tipo">Tipo ⇅</th><th data-orden="categoria">Categoría ⇅</th>
+            <th>Descripción</th><th class="der" data-orden="monto">Monto (S/) ⇅</th><th>Medio</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+      <p class="leyenda-tabla">Toca cualquier celda de monto, categoría o descripción para editarla. Los totales y los gráficos se actualizan al instante.</p>
+    </div>
+
+    <!-- B. PRESUPUESTO -->
+    <div class="panel" role="tabpanel" id="p-pre" aria-labelledby="t-pre" hidden>
+      <div class="forma c3">
+        <div class="campo"><label for="p-ingreso">Ingreso neto mensual (S/)<span class="hint">Base para la regla 50/30/20</span></label>
+          <input type="number" id="p-ingreso" min="0" step="0.01"></div>
+        <div class="campo"><label for="p-mes">Mes a evaluar</label><select id="p-mes"></select></div>
+        <div class="campo fin"><button class="btn sec" id="btn-5030">Autocompletar con 50/30/20</button></div>
+      </div>
+      <div class="tabla-caja">
+        <table class="cuadro" id="tb-pre">
+          <thead><tr><th>Categoría</th><th>Bloque</th><th class="der">Presupuestado (S/)</th><th class="der">Ejecutado (S/)</th><th class="der">Desvío (S/)</th><th class="der">Ejecución</th><th>Semáforo</th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
+        </table>
+      </div>
+      <p class="leyenda-tabla">Semáforo: verde por debajo del 90 % de ejecución, ámbar entre 90 % y 100 %, rojo por encima del 100 %. El desvío positivo indica saldo disponible.</p>
+    </div>
+
+    <!-- C. DEUDAS -->
+    <div class="panel" role="tabpanel" id="p-deu" aria-labelledby="t-deu" hidden>
+      <div class="forma c4">
+        <div class="campo"><label for="d-acr">Acreedor</label><input type="text" id="d-acr" placeholder="Tarjeta de crédito"></div>
+        <div class="campo"><label for="d-saldo">Saldo (S/)</label><input type="number" id="d-saldo" min="0" step="0.01"></div>
+        <div class="campo"><label for="d-tcea">TCEA (% anual)</label><input type="number" id="d-tcea" min="0" step="0.01" placeholder="85"></div>
+        <div class="campo"><label for="d-cuota">Cuota mensual (S/)<span class="hint">Déjalo vacío y se calcula</span></label><input type="number" id="d-cuota" min="0" step="0.01"></div>
+        <div class="campo"><label for="d-plazo">Plazo restante (meses)</label><input type="number" id="d-plazo" min="1" step="1" placeholder="24"></div>
+        <div class="campo fin" style="grid-column:1/-1"><button class="btn" id="btn-deu-add">Guardar deuda</button></div>
+      </div>
+      <div class="tabla-caja">
+        <table class="cuadro" id="tb-deu">
+          <thead><tr><th>Acreedor</th><th class="der">Saldo (S/)</th><th class="der">TCEA</th><th class="der">Tasa mensual</th><th class="der">Cuota (S/)</th><th class="der">Plazo</th><th class="der">Intereses est.</th><th></th></tr></thead>
+          <tbody></tbody><tfoot></tfoot>
+        </table>
+      </div>
+      <p class="leyenda-tabla">La tasa mensual efectiva se obtiene de la TCEA con la equivalencia <span class="num">i = (1 + TCEA)^(1/12) − 1</span>, no dividiendo entre doce.</p>
+
+      <div class="bloque-sim" style="margin-top:34px; border-top:1px dashed var(--regla-fuerte); padding-top:30px">
+        <h3>Tabla de amortización</h3>
+        <p style="font-size:.93rem; color:var(--tinta-70)">Cuota fija con el método francés, el que usan los bancos peruanos para créditos de consumo e hipotecarios.</p>
+        <div class="forma c4">
+          <div class="campo"><label for="a-capital">Capital (S/)</label><input type="number" id="a-capital" value="10000" min="0" step="0.01"></div>
+          <div class="campo"><label for="a-tcea">TCEA (% anual)</label><input type="number" id="a-tcea" value="45" min="0" step="0.01"></div>
+          <div class="campo"><label for="a-plazo">Plazo (meses)</label><input type="number" id="a-plazo" value="24" min="1" step="1"></div>
+          <div class="campo fin"><button class="btn" id="btn-amort">Calcular cuota</button></div>
+        </div>
+        <dl class="resultado" id="res-amort"></dl>
+        <details class="amort"><summary>Ver tabla de amortización completa</summary>
+          <div class="tabla-caja" style="margin-top:12px">
+            <table class="cuadro" id="tb-amort">
+              <thead><tr><th class="der">N.º</th><th class="der">Cuota (S/)</th><th class="der">Interés (S/)</th><th class="der">Amortización (S/)</th><th class="der">Saldo (S/)</th></tr></thead>
+              <tbody></tbody><tfoot></tfoot>
+            </table>
+          </div>
+        </details>
+      </div>
+
+      <div class="bloque-sim">
+        <h3>Avalancha o bola de nieve</h3>
+        <p style="font-size:.93rem; color:var(--tinta-70)">Indica cuánto puedes destinar en total cada mes al pago de deudas. La simulación aplica las cuotas mínimas y dirige todo el excedente a una sola deuda objetivo, según cada estrategia.</p>
+        <div class="forma c2">
+          <div class="campo"><label for="c-pago">Pago mensual total disponible (S/)</label><input type="number" id="c-pago" min="0" step="0.01"></div>
+          <div class="campo fin"><button class="btn" id="btn-comp">Comparar estrategias</button></div>
+        </div>
+        <div id="res-comp"></div>
+      </div>
+    </div>
+
+    <!-- D. PATRIMONIO -->
+    <div class="panel" role="tabpanel" id="p-pat" aria-labelledby="t-pat" hidden>
+      <div class="forma c4">
+        <div class="campo"><label for="pt-nombre">Concepto</label><input type="text" id="pt-nombre" placeholder="Cuenta de ahorros"></div>
+        <div class="campo"><label for="pt-clase">Clase</label>
+          <select id="pt-clase"><option value="activo">Activo</option><option value="pasivo">Pasivo</option></select>
+        </div>
+        <div class="campo"><label for="pt-monto">Monto (S/)</label><input type="number" id="pt-monto" min="0" step="0.01"></div>
+        <div class="campo chk fin"><input type="checkbox" id="pt-corriente"><label for="pt-corriente">Líquido o corriente <span class="hint" style="display:block">Disponible en menos de 12 meses</span></label></div>
+        <div class="campo fin" style="grid-column:1/-1"><button class="btn" id="btn-pt-add">Guardar concepto</button></div>
+      </div>
+      <div class="graficos" style="grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px">
+        <div>
+          <h3>Activos</h3>
+          <div class="tabla-caja"><table class="cuadro" id="tb-act" style="min-width:340px">
+            <thead><tr><th>Concepto</th><th class="der">Monto (S/)</th><th>Líquido</th><th></th></tr></thead>
+            <tbody></tbody><tfoot></tfoot></table></div>
+        </div>
+        <div>
+          <h3>Pasivos</h3>
+          <div class="tabla-caja"><table class="cuadro" id="tb-pas" style="min-width:340px">
+            <thead><tr><th>Concepto</th><th class="der">Monto (S/)</th><th>Corriente</th><th></th></tr></thead>
+            <tbody></tbody><tfoot></tfoot></table></div>
+        </div>
+      </div>
+      <dl class="resultado" id="res-pat"></dl>
+      <div class="forma c3" style="margin-top:26px">
+        <div class="campo"><label for="ci-mes">Registrar cierre del mes</label><input type="month" id="ci-mes"></div>
+        <div class="campo fin"><button class="btn sec" id="btn-cierre">Guardar cierre con el patrimonio actual</button></div>
+      </div>
+      <div class="tabla-caja"><table class="cuadro" id="tb-cierres" style="min-width:420px">
+        <thead><tr><th>Mes</th><th class="der">Activos (S/)</th><th class="der">Pasivos (S/)</th><th class="der">Patrimonio neto (S/)</th><th></th></tr></thead>
+        <tbody></tbody></table></div>
+      <p class="leyenda-tabla">Los cierres mensuales alimentan el gráfico de evolución del patrimonio neto.</p>
+    </div>
+
+    <!-- E. SIMULADORES -->
+    <div class="panel" role="tabpanel" id="p-sim" aria-labelledby="t-sim" hidden>
+      <div class="bloque-sim">
+        <h3>Interés compuesto con aportes periódicos</h3>
+        <div class="forma c4">
+          <div class="campo"><label for="s-cap">Capital inicial (S/)</label><input type="number" id="s-cap" value="5000" min="0" step="0.01"></div>
+          <div class="campo"><label for="s-ap">Aporte mensual (S/)</label><input type="number" id="s-ap" value="500" min="0" step="0.01"></div>
+          <div class="campo"><label for="s-tasa">Tasa efectiva anual (%)</label><input type="number" id="s-tasa" value="7" step="0.01"></div>
+          <div class="campo"><label for="s-anios">Plazo (años)</label><input type="number" id="s-anios" value="15" min="1" step="1"></div>
+          <div class="campo fin" style="grid-column:1/-1"><button class="btn" id="btn-sim-ic">Proyectar</button></div>
+        </div>
+        <dl class="resultado" id="res-ic"></dl>
+        <p class="leyenda-tabla">El gráfico de esta proyección está en la pestaña de indicadores.</p>
+      </div>
+
+      <div class="bloque-sim">
+        <h3>Meta de ahorro</h3>
+        <div class="forma c4">
+          <div class="campo"><label for="g-meta">Monto objetivo (S/)</label><input type="number" id="g-meta" value="30000" min="0" step="0.01"></div>
+          <div class="campo"><label for="g-inicial">Ya tengo ahorrado (S/)</label><input type="number" id="g-inicial" value="0" min="0" step="0.01"></div>
+          <div class="campo"><label for="g-tasa">Tasa efectiva anual (%)</label><input type="number" id="g-tasa" value="4" step="0.01"></div>
+          <div class="campo"><label for="g-meses">Plazo (meses)</label><input type="number" id="g-meses" value="36" min="1" step="1"></div>
+          <div class="campo fin" style="grid-column:1/-1"><button class="btn" id="btn-sim-meta">Calcular aporte</button></div>
+        </div>
+        <dl class="resultado" id="res-meta"></dl>
+      </div>
+
+      <div class="bloque-sim">
+        <h3>Fondo de emergencia</h3>
+        <p style="font-size:.93rem; color:var(--tinta-70)">Toma tus activos líquidos de la pestaña de patrimonio y los divide entre el promedio de gastos fijos registrados en Movimientos.</p>
+        <dl class="resultado" id="res-fe"></dl>
+        <div id="nota-fe"></div>
+      </div>
+    </div>
+
+    <!-- F. INDICADORES -->
+    <div class="panel" role="tabpanel" id="p-ind" aria-labelledby="t-ind" hidden>
+      <span id="panel-f-link" style="display:block; height:0"></span>
+      <div class="forma c3" style="background:var(--banda)">
+        <div class="campo"><label for="i-mes">Mes de análisis</label><select id="i-mes"></select></div>
+        <div class="campo" style="grid-column:2/-1; justify-content:end"><p class="leyenda-tabla" style="margin:0">Pasa el cursor sobre cada tarjeta para ver la fórmula aplicada.</p></div>
+      </div>
+      <div class="indicadores" id="indicadores"></div>
+      <div class="graficos">
+        <div class="grafico"><h4>1 · Ingresos y gastos por mes</h4><div class="lienzo" id="l1"><canvas id="g1"></canvas><div class="sin-datos">Registra tu primer movimiento para ver este gráfico.</div></div></div>
+        <div class="grafico"><h4>2 · Composición del gasto del mes</h4><div class="lienzo" id="l2"><canvas id="g2"></canvas><div class="sin-datos">Registra gastos en el mes seleccionado para ver su composición.</div></div></div>
+        <div class="grafico"><h4>3 · Patrimonio neto y saldo acumulado</h4><div class="lienzo" id="l3"><canvas id="g3"></canvas><div class="sin-datos">Guarda un cierre mensual en la pestaña de patrimonio para ver la evolución.</div></div></div>
+        <div class="grafico"><h4>4 · Presupuestado y ejecutado</h4><div class="lienzo" id="l4"><canvas id="g4"></canvas><div class="sin-datos">Define tu presupuesto para comparar contra lo ejecutado.</div></div></div>
+        <div class="grafico"><h4>5 · Proyección del capital</h4><div class="lienzo" id="l5"><canvas id="g5"></canvas><div class="sin-datos">Ejecuta el simulador de interés compuesto para ver la proyección.</div></div></div>
+        <div class="grafico"><h4>6 · Reducción de la deuda por estrategia</h4><div class="lienzo" id="l6"><canvas id="g6"></canvas><div class="sin-datos">Compara las estrategias en la pestaña de deudas para ver las curvas.</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======== AUTOR ======== -->
+<section class="bloque" id="autor">
+  <div class="wrap">
+    <div class="autor-grid">
+      <div class="retrato">
+        <!-- Fotografía incrustada en el propio archivo. Para cambiarla, guarda la nueva imagen
+             como assets/foto-perfil.jpg y escribe esa ruta en el atributo data-foto. -->
+        <img id="foto" data-foto="" alt="Fotografía de Gilmer Sánchez Valenzuela"
+             src="data:image/jpeg;base64,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">
+        <div class="sello">Educativo<br>No es asesoría<br>financiera</div>
+      </div>
+      <div>
+        <p class="eyebrow">Sobre el autor</p>
+        <h2 style="margin-bottom:.15em">Gilmer Sánchez Valenzuela</h2>
+        <p class="credencial">Candidato a Doctor en Economía (UCM, España) · Especialista en control gubernamental y finanzas públicas</p>
+        <p>Llevo años revisando cómo el Estado planifica, ejecuta y rinde cuentas de su presupuesto. La conclusión que más me ha servido no es técnica: los mismos principios que ordenan el gasto de una entidad pública ordenan el de una familia. Un presupuesto que se compara contra lo ejecutado, un indicador que se mide todos los meses y un registro que no depende de la memoria. Publico esta herramienta porque el aula alcanza para explicar la teoría, pero no para acompañar la práctica.</p>
+        <ul class="hoja">
+          <li><b>Formación</b><span>Economista, Universidad Nacional de San Antonio Abad del Cusco. Maestría en Finanzas, Universidad del Pacífico. Máster en Economía, Regulación y Competencia de los Servicios Públicos, Universitat de Barcelona. Máster en Crecimiento y Desarrollo Sostenible, Universidad de Castilla-La Mancha. Maestría en Auditoría y Control Gubernamental Internacional en curso, Universidad de Buenos Aires.</span></li>
+          <li><b>Experiencia</b><span>Jefe de Órgano de Control Institucional en el Sistema Nacional de Control, con desempeño en distintas entidades del Estado peruano.</span></li>
+          <li><b>Docencia</b><span>Cursos de Finanzas, Presupuesto y Auditoría en programas de Maestría en Gestión Pública.</span></li>
+          <li><b>Contacto</b><span><a href="https://www.linkedin.com/in/gilmersv/" target="_blank" rel="noopener">linkedin.com/in/gilmersv</a> · <a href="mailto:gilmersv@gmail.com">gilmersv@gmail.com</a></span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="pie">
+  <div class="wrap">
+    <span>Cálculo íntegramente local. Ningún dato se transmite a un servidor.</span>
+    <span class="num">2026</span>
+  </div>
+</footer>
+
+<script>
+/* =========================================================================
+   FINANZAS PERSONALES — lógica del aplicativo
+   Todo el cálculo ocurre en el navegador. Ningún dato se transmite.
+   Bloques: 1 formato · 2 almacenamiento · 3 estado · 4 teoría · 5 movimientos
+            6 presupuesto · 7 deudas · 8 patrimonio · 9 simuladores
+            10 indicadores y gráficos · 11 CSV/JSON · 12 arranque
+   ========================================================================= */
+(function () {
+'use strict';
+
+/* ---------- 1. FORMATO ---------- */
+var fS = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+var fP = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+var f4 = new Intl.NumberFormat('es-PE', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+function S(n) { return fS.format(isFinite(n) ? n : 0); }
+function pct(n) { return isFinite(n) ? fP.format(n * 100) + ' %' : '—'; }
+function neg(n) { return n < 0 ? '(' + S(Math.abs(n)) + ')' : S(n); }
+function cls(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : ''; }
+function num(v) { var x = parseFloat(v); return isFinite(x) ? x : 0; }
+function id() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+  return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
+function hoy() { return new Date().toISOString().slice(0, 10); }
+function mesDe(f) { return String(f || '').slice(0, 7); }
+function nombreMes(m) {
+  if (!m || m.length < 7) return m || '';
+  var ms = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','setiembre','octubre','noviembre','diciembre'];
+  return ms[parseInt(m.slice(5, 7), 10) - 1] + ' ' + m.slice(0, 4);
+}
+function $(s) { return document.querySelector(s); }
+function $$(s) { return Array.prototype.slice.call(document.querySelectorAll(s)); }
+
+/* tasa mensual efectiva a partir de una TCEA expresada en porcentaje */
+function iMensual(tceaPct) { return Math.pow(1 + num(tceaPct) / 100, 1 / 12) - 1; }
+/* cuota del método francés */
+function cuotaFrancesa(capital, tceaPct, meses) {
+  var i = iMensual(tceaPct), n = Math.max(1, Math.round(meses));
+  if (i <= 0) return capital / n;
+  return capital * i / (1 - Math.pow(1 + i, -n));
+}
+
+/* ---------- 2. ALMACENAMIENTO ---------- */
+var Store = (function () {
+  var K = 'fp-finanzas-v1', modo = 'memoria', mem = null;
+  function detectar() {
+    return Promise.resolve().then(function () {
+      if (window.storage && typeof window.storage.set === 'function') {
+        return window.storage.set(K + ':ping', '1').then(function () { modo = 'artefacto'; });
+      }
+      throw 0;
+    }).catch(function () {
+      try {
+        localStorage.setItem(K + ':ping', '1'); localStorage.removeItem(K + ':ping'); modo = 'local';
+      } catch (e) { modo = 'memoria'; }
+    });
+  }
+  function leer() {
+    return Promise.resolve().then(function () {
+      if (modo === 'artefacto') return window.storage.get(K).then(function (r) { return r && r.value ? JSON.parse(r.value) : null; });
+      if (modo === 'local') { var v = localStorage.getItem(K); return v ? JSON.parse(v) : null; }
+      return mem;
+    }).catch(function () { return null; });
+  }
+  function escribir(d) {
+    mem = d;
+    return Promise.resolve().then(function () {
+      if (modo === 'artefacto') return window.storage.set(K, JSON.stringify(d));
+      if (modo === 'local') localStorage.setItem(K, JSON.stringify(d));
+    }).catch(function () {});
+  }
+  return { detectar: detectar, leer: leer, escribir: escribir, modo: function () { return modo; } };
+})();
+
+var guardarTimer = null;
+function guardar() {
+  clearTimeout(guardarTimer);
+  guardarTimer = setTimeout(function () {
+    Store.escribir(E).then(function () {
+      var e = $('#estado-guardado');
+      e.textContent = 'Guardado ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) +
+        (Store.modo() === 'memoria' ? ' · solo en esta sesión' : ' · en este navegador');
+    });
+  }, 300);
+}
+
+/* ---------- 3. ESTADO ---------- */
+var CATS = [
+  { n: 'Vivienda',           b: 'Necesidad', pct: 18, fijo: true },
+  { n: 'Alimentación',       b: 'Necesidad', pct: 12, fijo: true },
+  { n: 'Transporte',         b: 'Necesidad', pct: 5,  fijo: true },
+  { n: 'Servicios',          b: 'Necesidad', pct: 4,  fijo: true },
+  { n: 'Salud',              b: 'Necesidad', pct: 3,  fijo: true },
+  { n: 'Educación',          b: 'Necesidad', pct: 3,  fijo: true },
+  { n: 'Deudas',             b: 'Necesidad', pct: 5,  fijo: true },
+  { n: 'Ocio',               b: 'Deseo',     pct: 18, fijo: false },
+  { n: 'Otros',              b: 'Deseo',     pct: 12, fijo: false },
+  { n: 'Ahorro e inversión', b: 'Ahorro',    pct: 20, fijo: false }
+];
+var CATS_ING = ['Sueldo', 'Gratificación', 'CTS', 'Honorarios', 'Alquileres', 'Intereses', 'Otros ingresos'];
+var COLORES = ['#5B3FA8','#1E7A5A','#A82E1E','#B07C10','#2D6E8E','#7A4B9E','#4A6B2A','#8E5A2D','#3F5C7A','#6E2D5A'];
+
+var E = {
+  movimientos: [], presupuesto: {}, ingresoMensual: 0,
+  deudas: [], activos: [], pasivos: [], cierres: []
+};
+var SIM = { ic: null, comp: null };            /* resultados no persistidos */
+var UI = { orden: 'fecha', asc: false, mes: '', tab: 't-mov' };
+var GRAF = {};
+
+/* ---------- 4. PARTE TEÓRICA ---------- */
+var TEMAS = [
+{ t: 'Qué son las finanzas personales',
+  c: '<p>Un hogar es una unidad económica: recibe ingresos, los asigna entre consumo presente y consumo futuro, y enfrenta una restricción presupuestaria. La diferencia con una empresa es que el hogar no busca maximizar utilidades, sino bienestar a lo largo del tiempo.</p><p>Esa restricción no es solo mensual, es <em>intertemporal</em>: lo que no consumes hoy se convierte en capacidad de consumo futuro, y lo que consumes por encima de tu ingreso hoy es capacidad de consumo futuro que ya gastaste. Toda decisión financiera personal se reduce a mover consumo de un momento del tiempo a otro, y a cuánto cuesta hacerlo.</p><p>Ordenar tus finanzas no consiste en gastar menos. Consiste en decidir con información en lugar de decidir por inercia.</p>' },
+
+{ t: 'Ingresos y flujo de caja',
+  c: '<p>El ingreso bruto es lo que figura en tu contrato; el ingreso neto es lo que efectivamente llega a tu cuenta después de aportes previsionales e impuesto a la renta de quinta categoría. Todo presupuesto se construye sobre el <strong>neto</strong>, nunca sobre el bruto.</p><p>Conviene distinguir tres fuentes: ingresos fijos (sueldo), variables (honorarios, comisiones) e ingresos pasivos (alquileres, intereses, dividendos). Cuanto mayor sea el peso de los variables, mayor debe ser tu colchón de liquidez.</p><p>En el caso peruano hay dos flujos que no son mensuales y que distorsionan la lectura del presupuesto: las <strong>gratificaciones</strong> de julio y diciembre y la <strong>CTS</strong> de mayo y noviembre. Si los tratas como ingreso corriente, tu presupuesto queda inflado diez meses al año.</p><div class="ejemplo"><b>Ejemplo</b>Un sueldo neto de S/ 4,000 con dos gratificaciones equivale a un ingreso anual de aproximadamente S/ 56,000, es decir S/ 4,667 mensuales promedio. Presupuestar con S/ 4,667 genera un déficit los diez meses sin gratificación. La regla práctica: presupuestar con el ingreso mensual regular y asignar las gratificaciones y la CTS a destinos definidos por adelantado.</div>' },
+
+{ t: 'El presupuesto personal',
+  c: '<p>Un presupuesto no es una lista de restricciones, es un plan de asignación. Y su valor no está en formularlo, sino en compararlo después contra lo efectivamente ejecutado. Un presupuesto que nadie contrasta con la realidad es un documento decorativo.</p><p>Tres métodos que funcionan:</p><p><strong>Regla 50/30/20.</strong> El 50 % del ingreso neto a necesidades, el 30 % a deseos y el 20 % a ahorro e inversión. Su virtud es que se puede aplicar en cinco minutos.</p><p><strong>Presupuesto base cero.</strong> Cada sol recibido tiene un destino asignado antes de empezar el mes, hasta que la asignación iguale el ingreso. No queda dinero sin nombre.</p><p><strong>Método de sobres.</strong> Se fija un límite físico o digital por categoría; cuando el sobre se agota, esa categoría se cierra hasta el mes siguiente. Es el más eficaz contra el gasto discrecional.</p><div class="ejemplo"><b>Ejemplo</b>Con S/ 5,000 netos: S/ 2,500 a necesidades, S/ 1,500 a deseos y S/ 1,000 a ahorro e inversión. Si tus necesidades exigen S/ 3,200, el problema no es de disciplina: es un problema estructural de costo de vida o de ingreso, y se resuelve en esa dimensión, no recortando el ocio.</div>' },
+
+{ t: 'Fondo de emergencia',
+  c: '<p>Es la reserva que evita que un imprevisto se convierta en deuda caras. Debe cubrir entre <strong>tres y seis meses de gastos fijos</strong>: tres si tienes ingreso estable y dependientes pocos, seis o más si eres independiente o único sostén del hogar.</p><p>Aquí el criterio es la liquidez, no la rentabilidad. El fondo de emergencia debe estar disponible en horas, no en semanas, y no debe estar expuesto a fluctuación de valor. Una cuenta de ahorro remunerada o un depósito a plazo con posibilidad de cancelación anticipada cumplen; un fondo mutuo de renta variable, no.</p><p>Nota sobre el orden de prioridades: si tienes deuda de tarjeta de crédito con TCEA superior al 50 %, conviene armar un fondo mínimo de un mes y destinar el resto a liquidar esa deuda antes de completar los seis meses. Ningún instrumento de ahorro rinde lo que cuesta esa deuda.</p>' },
+
+{ t: 'El valor del dinero en el tiempo',
+  c: '<p>Un sol hoy vale más que un sol dentro de un año, porque el sol de hoy puede invertirse. Esa es la idea de la que se desprende toda la matemática financiera.</p><div class="formula">VF = VP × (1 + i)<sup>n</sup>&nbsp;&nbsp;·&nbsp;&nbsp;VP = VF ÷ (1 + i)<sup>n</sup></div><p>Donde VP es el valor presente, VF el valor futuro, <em>i</em> la tasa por periodo y <em>n</em> el número de periodos. El interés simple se calcula siempre sobre el capital inicial; el <strong>interés compuesto</strong> se calcula sobre el capital más los intereses ya acumulados. La diferencia es irrelevante en un año y decisiva en veinte.</p><div class="ejemplo"><b>Ejemplo</b>S/ 10,000 al 7 % anual durante 25 años: con interés simple llegan a S/ 27,500; con interés compuesto, a S/ 54,274. Los mismos S/ 10,000 y la misma tasa producen casi el doble por el solo hecho de reinvertir los intereses. La variable más poderosa de la fórmula no es la tasa, es el exponente.</div>' },
+
+{ t: 'Inflación y poder de compra',
+  c: '<p>La rentabilidad que importa no es la nominal, es la real: la que queda después de descontar la inflación. La relación exacta es la ecuación de Fisher.</p><div class="formula">(1 + r) = (1 + i) ÷ (1 + π)&nbsp;&nbsp;→&nbsp;&nbsp;r = (1 + i) ÷ (1 + π) − 1</div><p>Con <em>i</em> la tasa nominal, <em>π</em> la inflación y <em>r</em> la tasa real. La aproximación r ≈ i − π sirve para tasas bajas, pero se rompe con tasas altas.</p><div class="ejemplo"><b>Ejemplo</b>Un depósito al 3 % nominal con inflación de 3 %: r = (1.03 ÷ 1.03) − 1 = 0 %. No perdiste dinero en soles, pero tu capacidad de compra es exactamente la misma que hace un año. Si la inflación fuera 4 %, tu rentabilidad real sería negativa: −0.96 %. Mantener dinero en una cuenta sin remuneración durante un periodo inflacionario es una pérdida silenciosa pero cierta.</div>' },
+
+{ t: 'Endeudamiento y el costo real del crédito',
+  c: '<p>La distinción útil no es entre deuda buena y mala, sino entre deuda que financia un activo que genera valor o ahorro futuro (vivienda, formación, un equipo de trabajo) y deuda que financia consumo ya realizado.</p><p>Para comparar créditos existe una sola tasa válida: la <strong>TCEA</strong>, tasa de costo efectivo anual, que incorpora la tasa de interés más comisiones, portes y seguros obligatorios. Dos créditos con la misma tasa de interés nominal pueden tener TCEA muy distintas. Su equivalente en el lado del ahorro es la <strong>TREA</strong>, tasa de rendimiento efectivo anual.</p><p>Un punto que casi todos calculan mal: la tasa mensual no se obtiene dividiendo la TCEA entre doce, porque la TCEA ya es una tasa efectiva compuesta.</p><div class="formula">i<sub>mensual</sub> = (1 + TCEA)<sup>1/12</sup> − 1</div><p>La cuota de un crédito con amortización francesa, la que usan los bancos peruanos, es constante y se obtiene así:</p><div class="formula">Cuota = Capital × i ÷ [1 − (1 + i)<sup>−n</sup>]</div><p>Regla de prudencia: la suma de tus cuotas mensuales no debería superar el <strong>30 % de tu ingreso neto</strong>. Por encima del 40 % la situación es de sobreendeudamiento y cualquier imprevisto se vuelve inmanejable.</p><div class="ejemplo"><b>Ejemplo</b>S/ 10,000 a 24 meses con TCEA de 45 %: la tasa mensual es 3.1448 % y la cuota resulta S/ 599.72. Pagarás S/ 14,393 en total, de los cuales S/ 4,393 son intereses: el 44 % de lo que pediste prestado.</div>' },
+
+{ t: 'Avalancha o bola de nieve',
+  c: '<p>Cuando tienes varias deudas y un excedente mensual limitado, la pregunta es a cuál dirigir ese excedente. Hay dos estrategias, y la elección entre ellas no es solo financiera.</p><p><strong>Avalancha:</strong> pagas la cuota mínima de todas y diriges el excedente a la deuda de <em>mayor TCEA</em>. Es la óptima en términos matemáticos: minimiza intereses totales y, casi siempre, el plazo.</p><p><strong>Bola de nieve:</strong> diriges el excedente a la deuda de <em>menor saldo</em>. Cuesta más en intereses, pero produce una liquidación completa en pocos meses, y ese resultado visible sostiene la conducta de quien ya abandonó otros intentos.</p><div class="ejemplo"><b>Ejemplo</b>Tres deudas —S/ 6,000 al 85 %, S/ 12,000 al 28 % y S/ 3,000 al 14 %— con S/ 1,500 mensuales disponibles. Avalancha: 18 meses y S/ 5,471 de intereses. Bola de nieve: 19 meses y S/ 6,498. La avalancha ahorra S/ 1,027. Si sabes que vas a sostener el plan, elige avalancha; si tu historial dice que abandonas a los tres meses, la bola de nieve barata que sí terminas es mejor que la avalancha óptima que no.</div><p>El aplicativo simula ambas con tus propias cifras.</p>' },
+
+{ t: 'Ahorro e inversión',
+  c: '<p>Ahorrar es no gastar; invertir es poner ese ahorro a producir asumiendo riesgo. No son sinónimos y no compiten: el ahorro es el insumo de la inversión.</p><p>Tres principios sostienen cualquier decisión de inversión sensata. <strong>Relación riesgo-retorno:</strong> no existe mayor rendimiento esperado sin mayor variabilidad; cualquier oferta que prometa rendimiento alto sin riesgo es, sin excepción, un fraude. <strong>Diversificación:</strong> combinar activos cuyos rendimientos no se mueven juntos reduce el riesgo total sin sacrificar retorno esperado proporcionalmente. <strong>Horizonte temporal:</strong> es lo que determina qué riesgo puedes tolerar; dinero que necesitarás en dos años no pertenece a la renta variable.</p><p>Instrumentos disponibles en el mercado peruano, de menor a mayor riesgo: depósitos a plazo, fondos mutuos de renta fija, bonos corporativos y soberanos, fondos mutuos mixtos, acciones locales y fondos indexados internacionales.</p><p>Dos consideraciones prácticas: los depósitos en entidades supervisadas están cubiertos por el <strong>Fondo de Seguro de Depósitos</strong> hasta un monto máximo que se actualiza cada trimestre, lo que hace inconveniente concentrar más de ese tope en una sola entidad. Y las comisiones importan: una diferencia de 1.5 % anual en comisiones de gestión reduce el capital final a veinte años en más de una cuarta parte.</p>' },
+
+{ t: 'Previsión para la jubilación',
+  c: '<p>En Perú coexisten dos sistemas con lógicas estructuralmente distintas, y la diferencia no es de rentabilidad sino de naturaleza del derecho.</p><p><strong>ONP, sistema nacional de pensiones:</strong> es de reparto. Tus aportes financian las pensiones de quienes hoy están jubilados, y tu pensión futura la financiarán los aportantes de entonces. No hay cuenta individual; hay un derecho sujeto a requisitos mínimos de años de aporte y a un tope máximo de pensión. Si no alcanzas los años exigidos, el derecho no se genera.</p><p><strong>AFP, sistema privado:</strong> es de capitalización individual. Tus aportes van a una cuenta con tu nombre, se invierten en fondos con distintos perfiles de riesgo y tu pensión depende del saldo acumulado. El saldo es heredable; la pensión no está garantizada.</p><p>Dos decisiones que sí controlas: el <strong>tipo de fondo</strong>, donde el criterio es la edad —a mayor horizonte, mayor exposición a renta variable— y el <strong>aporte voluntario</strong>, que permite acelerar la acumulación con ventajas tributarias en ciertas modalidades.</p><p>Aviso relevante: la normativa previsional peruana ha cambiado varias veces en los últimos años, incluyendo los regímenes de retiro extraordinario. Verifica siempre el marco vigente antes de decidir.</p>' },
+
+{ t: 'Seguros y gestión de riesgos',
+  c: '<p>Un seguro no es una inversión, es la transferencia de un riesgo a cambio de un costo conocido. La pregunta correcta no es si el seguro es rentable —no lo es, por diseño— sino si el riesgo que cubre es de una magnitud que tu patrimonio no podría absorber.</p><p>De ahí la regla: <strong>asume los riesgos pequeños y frecuentes; transfiere los grandes e improbables.</strong> Un seguro de pantalla de celular cubre un riesgo que tú puedes pagar. Un seguro de salud oncológico cubre uno que no.</p><p>Coberturas que en general justifican su costo: salud complementaria, invalidez o desgravamen si tienes dependientes y deuda hipotecaria, responsabilidad civil vehicular por encima del SOAT obligatorio, y seguro de vida mientras haya dependientes económicos. Coberturas que rara vez lo justifican: garantías extendidas de electrodomésticos y seguros con componente de ahorro que empaquetan protección e inversión, donde la opacidad de la comisión suele superar el beneficio.</p>' },
+
+{ t: 'Patrimonio neto y salud financiera',
+  c: '<p>El presupuesto mide tu flujo; el patrimonio neto mide tu resultado acumulado. Es el único indicador que no se puede maquillar con un buen mes.</p><div class="formula">Patrimonio neto = Activos − Pasivos</div><p>Se puede tener un ingreso alto y patrimonio negativo. Se puede tener un ingreso modesto y patrimonio creciente. La dirección de la tendencia dice más que el nivel.</p><p>Seis indicadores permiten un diagnóstico completo, y son los mismos que calcula el aplicativo:</p><div class="formula">Tasa de ahorro = Ahorro ÷ Ingreso neto&nbsp;&nbsp;(≥ 20 %)<br>Ratio de endeudamiento = Cuotas ÷ Ingreso neto&nbsp;&nbsp;(≤ 30 %)<br>Cobertura de emergencia = Fondo líquido ÷ Gastos fijos&nbsp;&nbsp;(3 a 6 meses)<br>Liquidez = Activos líquidos ÷ Pasivos corrientes&nbsp;&nbsp;(&gt; 1)<br>Patrimonio neto = Activos − Pasivos&nbsp;&nbsp;(creciente)<br>Ejecución presupuestal = Ejecutado ÷ Presupuestado&nbsp;&nbsp;(≈ 100 %)</div><p>Ninguno de los seis significa nada medido una sola vez. Su utilidad aparece en la serie: el mismo indicador, el mismo día de cada mes, durante un año. Ese es todo el método.</p>' }
+];
+
+function pintarTeoria() {
+  $('#temario').innerHTML = TEMAS.map(function (t, k) {
+    return '<details class="tema"' + (k === 0 ? ' open' : '') + '><summary><span class="folio">' +
+      String(k + 1).padStart(2, '0') + '</span><span>' + esc(t.t) + '</span></summary>' +
+      '<div class="tema-cuerpo">' + t.c + '</div></details>';
+  }).join('');
+}
+
+/* ---------- 5. MOVIMIENTOS ---------- */
+function mesesConDatos() {
+  var s = {};
+  E.movimientos.forEach(function (m) { s[mesDe(m.fecha)] = 1; });
+  E.cierres.forEach(function (c) { s[c.mes] = 1; });
+  s[mesDe(hoy())] = 1;
+  return Object.keys(s).filter(Boolean).sort();
+}
+function llenarSelectMeses() {
+  var ms = mesesConDatos();
+  if (!UI.mes || ms.indexOf(UI.mes) < 0) UI.mes = ms[ms.length - 1];
+  ['#f-mes', '#p-mes', '#i-mes'].forEach(function (sel) {
+    var el = $(sel); if (!el) return;
+    var extra = sel === '#f-mes' ? '<option value="">Todos los meses</option>' : '';
+    el.innerHTML = extra + ms.map(function (m) {
+      return '<option value="' + m + '"' + (m === UI.mes ? ' selected' : '') + '>' + nombreMes(m) + '</option>';
+    }).join('');
+  });
+}
+function llenarSelectCats() {
+  var tipo = $('#m-tipo').value;
+  var lista = tipo === 'Ingreso' ? CATS_ING : CATS.map(function (c) { return c.n; });
+  $('#m-cat').innerHTML = lista.map(function (c) { return '<option>' + c + '</option>'; }).join('');
+  $('#f-cat').innerHTML = '<option value="">Todas</option>' +
+    CATS.map(function (c) { return '<option>' + c.n + '</option>'; }).join('') +
+    CATS_ING.map(function (c) { return '<option>' + c + '</option>'; }).join('');
+}
+function movsFiltrados() {
+  var fm = $('#f-mes').value, ft = $('#f-tipo').value, fc = $('#f-cat').value,
+      fb = ($('#f-buscar').value || '').toLowerCase();
+  var r = E.movimientos.filter(function (m) {
+    return (!fm || mesDe(m.fecha) === fm) && (!ft || m.tipo === ft) && (!fc || m.categoria === fc) &&
+           (!fb || String(m.descripcion || '').toLowerCase().indexOf(fb) >= 0);
+  });
+  var k = UI.orden;
+  r.sort(function (a, b) {
+    var x = a[k], y = b[k];
+    if (k === 'monto') { x = num(x); y = num(y); }
+    else { x = String(x || ''); y = String(y || ''); }
+    return (x > y ? 1 : x < y ? -1 : 0) * (UI.asc ? 1 : -1);
+  });
+  return r;
+}
+function pintarMovs() {
+  var f = movsFiltrados(), tb = $('#tb-mov tbody'), tf = $('#tb-mov tfoot');
+  if (!f.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="vacio">' +
+      (E.movimientos.length ? 'Ningún movimiento coincide con los filtros aplicados.'
+                            : 'Aún no hay movimientos. Registra el primero en el formulario de arriba, o carga los datos de ejemplo.') +
+      '</td></tr>';
+    tf.innerHTML = '';
+  } else {
+    var cats = CATS.map(function (c) { return c.n; });
+    tb.innerHTML = f.map(function (m) {
+      var lista = m.tipo === 'Ingreso' ? CATS_ING : cats;
+      if (lista.indexOf(m.categoria) < 0) lista = lista.concat([m.categoria]);
+      return '<tr data-fila="' + m.id + '">' +
+        '<td><input type="date" data-c="fecha" value="' + esc(m.fecha) + '"></td>' +
+        '<td><select data-c="tipo"><option' + (m.tipo === 'Ingreso' ? ' selected' : '') + '>Ingreso</option><option' + (m.tipo === 'Gasto' ? ' selected' : '') + '>Gasto</option></select></td>' +
+        '<td><select data-c="categoria">' + lista.map(function (c) { return '<option' + (c === m.categoria ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select></td>' +
+        '<td><input type="text" data-c="descripcion" value="' + esc(m.descripcion) + '"></td>' +
+        '<td class="der ' + (m.tipo === 'Ingreso' ? 'pos' : 'neg') + '"><input type="number" step="0.01" min="0" data-c="monto" value="' + num(m.monto) + '"></td>' +
+        '<td>' + esc(m.medio) + '</td>' +
+        '<td><button class="acc" data-borrar="' + m.id + '" aria-label="Eliminar movimiento">✕</button></td></tr>';
+    }).join('');
+    var ing = f.filter(function (m) { return m.tipo === 'Ingreso'; }).reduce(function (a, m) { return a + num(m.monto); }, 0);
+    var gas = f.filter(function (m) { return m.tipo === 'Gasto'; }).reduce(function (a, m) { return a + num(m.monto); }, 0);
+    tf.innerHTML = '<tr><td colspan="4">Totales de la selección · ' + f.length + ' movimiento' + (f.length === 1 ? '' : 's') + '</td>' +
+      '<td class="der">Ingresos <span class="pos">' + S(ing) + '</span> · Gastos <span class="neg">' + S(gas) + '</span></td>' +
+      '<td colspan="2" class="der">Neto <span class="' + cls(ing - gas) + '">' + neg(ing - gas) + '</span></td></tr>';
+  }
+}
+function agregarMov() {
+  var monto = num($('#m-monto').value);
+  if (monto <= 0) { $('#m-monto').focus(); return; }
+  E.movimientos.push({
+    id: id(), fecha: $('#m-fecha').value || hoy(), tipo: $('#m-tipo').value,
+    categoria: $('#m-cat').value, descripcion: $('#m-desc').value.trim() || '—',
+    monto: monto, medio: $('#m-medio').value
+  });
+  $('#m-desc').value = ''; $('#m-monto').value = '';
+  llenarSelectMeses(); todo();
+}
+
+/* ---------- 6. PRESUPUESTO ---------- */
+function ejecutadoPorCat(mes) {
+  var r = {};
+  E.movimientos.forEach(function (m) {
+    if (m.tipo !== 'Gasto') return;
+    if (mes && mesDe(m.fecha) !== mes) return;
+    r[m.categoria] = (r[m.categoria] || 0) + num(m.monto);
+  });
+  return r;
+}
+function semaforo(ej, pr) {
+  if (!pr) return ej > 0 ? { c: 'ex', t: 'Sin presupuesto' } : { c: 'ok', t: 'Sin actividad' };
+  var p = ej / pr;
+  if (p > 1) return { c: 'ex', t: 'Excedido' };
+  if (p >= 0.9) return { c: 'al', t: 'Al límite' };
+  return { c: 'ok', t: 'En rango' };
+}
+function pintarPresupuesto() {
+  var mes = $('#p-mes').value || UI.mes, ej = ejecutadoPorCat(mes);
+  var tb = $('#tb-pre tbody'), tp = 0, te = 0;
+  tb.innerHTML = CATS.map(function (c) {
+    var pr = num(E.presupuesto[c.n]), e = num(ej[c.n]), d = pr - e;
+    tp += pr; te += e;
+    var s = semaforo(e, pr);
+    return '<tr><td>' + c.n + '</td><td style="color:var(--tinta-45); font-size:.82rem">' + c.b + '</td>' +
+      '<td class="der"><input type="number" step="0.01" min="0" data-pre="' + esc(c.n) + '" value="' + (pr || '') + '" placeholder="0.00"></td>' +
+      '<td class="der">' + S(e) + '</td>' +
+      '<td class="der ' + cls(d) + '">' + neg(d) + '</td>' +
+      '<td class="der">' + (pr ? pct(e / pr) : '—') + '</td>' +
+      '<td><span class="sem ' + s.c + '">' + s.t + '</span></td></tr>';
+  }).join('');
+  var d = tp - te, s = semaforo(te, tp);
+  $('#tb-pre tfoot').innerHTML = '<tr><td colspan="2">Total del mes</td><td class="der">' + S(tp) +
+    '</td><td class="der">' + S(te) + '</td><td class="der ' + cls(d) + '">' + neg(d) +
+    '</td><td class="der">' + (tp ? pct(te / tp) : '—') + '</td><td><span class="sem ' + s.c + '">' + s.t + '</span></td></tr>';
+}
+function aplicar503020() {
+  var ing = num($('#p-ingreso').value);
+  if (ing <= 0) { $('#p-ingreso').focus(); return; }
+  E.ingresoMensual = ing;
+  CATS.forEach(function (c) { E.presupuesto[c.n] = Math.round(ing * c.pct) / 100; });
+  todo();
+}
+
+/* ---------- 7. DEUDAS ---------- */
+function pintarDeudas() {
+  var tb = $('#tb-deu tbody');
+  if (!E.deudas.length) {
+    tb.innerHTML = '<tr><td colspan="8" class="vacio">Aún no hay deudas registradas. Si no tienes ninguna, ese es el mejor resultado posible de esta pestaña.</td></tr>';
+    $('#tb-deu tfoot').innerHTML = '';
+  } else {
+    var ts = 0, tc = 0, ti = 0;
+    tb.innerHTML = E.deudas.map(function (d) {
+      var i = iMensual(d.tcea), cu = num(d.cuota) || cuotaFrancesa(num(d.saldo), d.tcea, d.plazo || 12);
+      var n = num(d.plazo) || Math.round(num(d.saldo) / Math.max(1, cu));
+      var intTot = Math.max(0, cu * n - num(d.saldo));
+      ts += num(d.saldo); tc += cu; ti += intTot;
+      return '<tr data-deuda="' + d.id + '">' +
+        '<td><input type="text" data-c="acreedor" value="' + esc(d.acreedor) + '"></td>' +
+        '<td class="der"><input type="number" step="0.01" min="0" data-c="saldo" value="' + num(d.saldo) + '"></td>' +
+        '<td class="der"><input type="number" step="0.01" min="0" data-c="tcea" value="' + num(d.tcea) + '" style="max-width:90px"></td>' +
+        '<td class="der">' + f4.format(i * 100) + ' %</td>' +
+        '<td class="der"><input type="number" step="0.01" min="0" data-c="cuota" value="' + Math.round(cu * 100) / 100 + '"></td>' +
+        '<td class="der"><input type="number" step="1" min="1" data-c="plazo" value="' + n + '" style="max-width:80px"></td>' +
+        '<td class="der neg">' + S(intTot) + '</td>' +
+        '<td><button class="acc" data-borrar-deuda="' + d.id + '" aria-label="Eliminar deuda">✕</button></td></tr>';
+    }).join('');
+    $('#tb-deu tfoot').innerHTML = '<tr><td>Totales</td><td class="der">' + S(ts) + '</td><td colspan="2"></td>' +
+      '<td class="der">' + S(tc) + '</td><td></td><td class="der neg">' + S(ti) + '</td><td></td></tr>';
+  }
+}
+function agregarDeuda() {
+  var saldo = num($('#d-saldo').value);
+  if (saldo <= 0) { $('#d-saldo').focus(); return; }
+  var tcea = num($('#d-tcea').value), plazo = Math.max(1, Math.round(num($('#d-plazo').value) || 12));
+  var cuota = num($('#d-cuota').value) || Math.round(cuotaFrancesa(saldo, tcea, plazo) * 100) / 100;
+  E.deudas.push({ id: id(), acreedor: $('#d-acr').value.trim() || 'Acreedor', saldo: saldo, tcea: tcea, cuota: cuota, plazo: plazo });
+  ['#d-acr', '#d-saldo', '#d-tcea', '#d-cuota', '#d-plazo'].forEach(function (s) { $(s).value = ''; });
+  todo();
+}
+function calcularAmortizacion() {
+  var P = num($('#a-capital').value), t = num($('#a-tcea').value), n = Math.max(1, Math.round(num($('#a-plazo').value)));
+  var i = iMensual(t), cu = cuotaFrancesa(P, t, n), saldo = P, filas = [], tI = 0, tA = 0, tC = 0;
+  for (var k = 1; k <= n; k++) {
+    var int = saldo * i, amo = cu - int;
+    if (k === n) { amo = saldo; cu = int + amo; }
+    saldo = Math.max(0, saldo - amo);
+    tI += int; tA += amo; tC += cu;
+    filas.push('<tr><td class="der">' + k + '</td><td class="der">' + S(cu) + '</td><td class="der neg">' + S(int) +
+      '</td><td class="der">' + S(amo) + '</td><td class="der">' + S(saldo) + '</td></tr>');
+  }
+  $('#tb-amort tbody').innerHTML = filas.join('');
+  $('#tb-amort tfoot').innerHTML = '<tr><td>Total</td><td class="der">' + S(tC) + '</td><td class="der neg">' + S(tI) +
+    '</td><td class="der">' + S(tA) + '</td><td class="der">0.00</td></tr>';
+  $('#res-amort').innerHTML =
+    '<div><dt>Tasa mensual efectiva</dt><dd>' + f4.format(i * 100) + ' %</dd></div>' +
+    '<div><dt>Cuota mensual</dt><dd>S/ ' + S(cuotaFrancesa(P, t, n)) + '</dd></div>' +
+    '<div><dt>Intereses totales</dt><dd class="neg">S/ ' + S(tI) + '</dd></div>';
+}
+function simularEstrategia(orden, pagoTotal) {
+  var d = E.deudas.map(function (x) {
+    var cu = num(x.cuota) || cuotaFrancesa(num(x.saldo), x.tcea, x.plazo || 12);
+    return { saldo: num(x.saldo), i: iMensual(x.tcea), min: cu, tcea: num(x.tcea), acreedor: x.acreedor };
+  });
+  var meses = 0, interes = 0, serie = [d.reduce(function (a, x) { return a + x.saldo; }, 0)];
+  while (d.some(function (x) { return x.saldo > 0.01; }) && meses < 600) {
+    meses++;
+    d.forEach(function (x) { if (x.saldo > 0) { var it = x.saldo * x.i; x.saldo += it; interes += it; } });
+    var disp = pagoTotal;
+    d.forEach(function (x) {
+      if (x.saldo > 0 && disp > 0) { var p = Math.min(x.min, x.saldo, disp); x.saldo -= p; disp -= p; }
+    });
+    var act = d.filter(function (x) { return x.saldo > 0; }).sort(orden);
+    for (var k = 0; k < act.length && disp > 0; k++) {
+      var p2 = Math.min(disp, act[k].saldo); act[k].saldo -= p2; disp -= p2;
+    }
+    serie.push(d.reduce(function (a, x) { return a + Math.max(0, x.saldo); }, 0));
+  }
+  return { meses: meses, interes: interes, serie: serie, completo: meses < 600 };
+}
+function compararEstrategias() {
+  var cont = $('#res-comp'), pago = num($('#c-pago').value);
+  if (!E.deudas.length) { cont.innerHTML = '<div class="msg info">Registra al menos una deuda para comparar estrategias.</div>'; return; }
+  var minTotal = E.deudas.reduce(function (a, x) {
+    return a + (num(x.cuota) || cuotaFrancesa(num(x.saldo), x.tcea, x.plazo || 12)); }, 0);
+  if (pago < minTotal) {
+    cont.innerHTML = '<div class="msg err">El pago disponible (S/ ' + S(pago) + ') no cubre la suma de las cuotas mínimas (S/ ' +
+      S(minTotal) + '). Aumenta el monto disponible o renegocia el plazo de alguna deuda.</div>';
+    SIM.comp = null; return;
+  }
+  var av = simularEstrategia(function (a, b) { return b.tcea - a.tcea; }, pago);
+  var bn = simularEstrategia(function (a, b) { return a.saldo - b.saldo; }, pago);
+  SIM.comp = { av: av, bn: bn };
+  var mejor = av.interes <= bn.interes ? 'avalancha' : 'bola de nieve';
+  cont.innerHTML =
+    '<dl class="resultado"><div><dt>Avalancha · plazo</dt><dd>' + av.meses + ' meses</dd></div>' +
+    '<div><dt>Avalancha · intereses</dt><dd class="neg">S/ ' + S(av.interes) + '</dd></div>' +
+    '<div><dt>Deuda liquidada en</dt><dd>' + Math.round(av.meses / 12 * 10) / 10 + ' años</dd></div></dl>' +
+    '<dl class="resultado"><div><dt>Bola de nieve · plazo</dt><dd>' + bn.meses + ' meses</dd></div>' +
+    '<div><dt>Bola de nieve · intereses</dt><dd class="neg">S/ ' + S(bn.interes) + '</dd></div>' +
+    '<div><dt>Diferencia de intereses</dt><dd>S/ ' + S(Math.abs(av.interes - bn.interes)) + '</dd></div></dl>' +
+    '<div class="msg info">En tu caso la estrategia de <strong>' + mejor + '</strong> paga menos intereses. ' +
+    'La curva de reducción de ambas está en el gráfico 6 de la pestaña de indicadores.</div>';
+  pintarG6();
+}
+
+/* ---------- 8. PATRIMONIO ---------- */
+function sumas() {
+  var a = E.activos.reduce(function (s, x) { return s + num(x.monto); }, 0);
+  var p = E.pasivos.reduce(function (s, x) { return s + num(x.monto); }, 0);
+  var al = E.activos.filter(function (x) { return x.corriente; }).reduce(function (s, x) { return s + num(x.monto); }, 0);
+  var pc = E.pasivos.filter(function (x) { return x.corriente; }).reduce(function (s, x) { return s + num(x.monto); }, 0);
+  return { activos: a, pasivos: p, liquidos: al, corrientes: pc, neto: a - p };
+}
+function pintarTablaPT(lista, tabla, etiqueta, clase) {
+  var tb = $(tabla + ' tbody');
+  if (!lista.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="vacio">Sin registros.</td></tr>';
+    $(tabla + ' tfoot').innerHTML = ''; return;
+  }
+  tb.innerHTML = lista.map(function (x) {
+    return '<tr data-pt="' + x.id + '" data-clase="' + clase + '">' +
+      '<td><input type="text" data-c="nombre" value="' + esc(x.nombre) + '"></td>' +
+      '<td class="der"><input type="number" step="0.01" min="0" data-c="monto" value="' + num(x.monto) + '"></td>' +
+      '<td><input type="checkbox" data-c="corriente"' + (x.corriente ? ' checked' : '') + ' aria-label="' + etiqueta + '"></td>' +
+      '<td><button class="acc" data-borrar-pt="' + x.id + '" data-clase="' + clase + '" aria-label="Eliminar">✕</button></td></tr>';
+  }).join('');
+  var t = lista.reduce(function (s, x) { return s + num(x.monto); }, 0);
+  $(tabla + ' tfoot').innerHTML = '<tr><td>Total</td><td class="der">' + S(t) + '</td><td colspan="2"></td></tr>';
+}
+function pintarPatrimonio() {
+  pintarTablaPT(E.activos, '#tb-act', 'Activo líquido', 'activos');
+  pintarTablaPT(E.pasivos, '#tb-pas', 'Pasivo corriente', 'pasivos');
+  var s = sumas();
+  $('#res-pat').innerHTML =
+    '<div><dt>Activos</dt><dd>S/ ' + S(s.activos) + '</dd></div>' +
+    '<div><dt>Pasivos</dt><dd class="neg">S/ ' + S(s.pasivos) + '</dd></div>' +
+    '<div><dt>Patrimonio neto</dt><dd class="' + cls(s.neto) + '">S/ ' + neg(s.neto) + '</dd></div>';
+  var tb = $('#tb-cierres tbody');
+  if (!E.cierres.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="vacio">Guarda un cierre mensual para construir la serie de tu patrimonio.</td></tr>';
+  } else {
+    tb.innerHTML = E.cierres.slice().sort(function (a, b) { return a.mes < b.mes ? -1 : 1; }).map(function (c) {
+      return '<tr><td>' + nombreMes(c.mes) + '</td><td class="der">' + S(c.activos) + '</td>' +
+        '<td class="der neg">' + S(c.pasivos) + '</td><td class="der ' + cls(c.neto) + '">' + neg(c.neto) + '</td>' +
+        '<td><button class="acc" data-borrar-cierre="' + c.mes + '" aria-label="Eliminar cierre">✕</button></td></tr>';
+    }).join('');
+  }
+}
+function guardarCierre() {
+  var mes = $('#ci-mes').value || mesDe(hoy()), s = sumas();
+  E.cierres = E.cierres.filter(function (c) { return c.mes !== mes; });
+  E.cierres.push({ mes: mes, activos: s.activos, pasivos: s.pasivos, neto: s.neto });
+  llenarSelectMeses(); todo();
+}
+
+/* ---------- 9. SIMULADORES ---------- */
+function simularInteresCompuesto() {
+  var cap = num($('#s-cap').value), ap = num($('#s-ap').value),
+      tasa = num($('#s-tasa').value), anios = Math.max(1, Math.round(num($('#s-anios').value)));
+  var i = Math.pow(1 + tasa / 100, 1 / 12) - 1, n = anios * 12, saldo = cap, aportado = cap, serie = [cap], apo = [cap];
+  for (var k = 1; k <= n; k++) {
+    saldo = saldo * (1 + i) + ap; aportado += ap;
+    if (k % 12 === 0) { serie.push(saldo); apo.push(aportado); }
+  }
+  SIM.ic = { serie: serie, aportes: apo, anios: anios };
+  $('#res-ic').innerHTML =
+    '<div><dt>Capital final</dt><dd class="pos">S/ ' + S(saldo) + '</dd></div>' +
+    '<div><dt>Total aportado</dt><dd>S/ ' + S(aportado) + '</dd></div>' +
+    '<div><dt>Intereses generados</dt><dd class="pos">S/ ' + S(saldo - aportado) + '</dd></div>';
+  pintarG5();
+}
+function simularMeta() {
+  var meta = num($('#g-meta').value), ini = num($('#g-inicial').value),
+      tasa = num($('#g-tasa').value), n = Math.max(1, Math.round(num($('#g-meses').value)));
+  var i = Math.pow(1 + tasa / 100, 1 / 12) - 1;
+  var futuroIni = ini * Math.pow(1 + i, n), falta = meta - futuroIni, aporte;
+  if (falta <= 0) aporte = 0;
+  else if (i <= 0) aporte = falta / n;
+  else aporte = falta * i / (Math.pow(1 + i, n) - 1);
+  $('#res-meta').innerHTML =
+    '<div><dt>Aporte mensual necesario</dt><dd class="' + (aporte ? '' : 'pos') + '">S/ ' + S(aporte) + '</dd></div>' +
+    '<div><dt>Total que aportarás</dt><dd>S/ ' + S(aporte * n) + '</dd></div>' +
+    '<div><dt>Intereses a tu favor</dt><dd class="pos">S/ ' + S(Math.max(0, meta - ini - aporte * n)) + '</dd></div>' +
+    (aporte === 0 ? '<div style="grid-column:1/-1"><dt>Nota</dt><dd style="font-size:.95rem; font-family:var(--texto)">Lo que ya tienes ahorrado alcanza la meta en el plazo indicado sin aportes adicionales.</dd></div>' : '');
+}
+function gastosFijosPromedio() {
+  var fijas = CATS.filter(function (c) { return c.fijo; }).map(function (c) { return c.n; });
+  var porMes = {};
+  E.movimientos.forEach(function (m) {
+    if (m.tipo !== 'Gasto' || fijas.indexOf(m.categoria) < 0) return;
+    var k = mesDe(m.fecha); porMes[k] = (porMes[k] || 0) + num(m.monto);
+  });
+  var ks = Object.keys(porMes);
+  if (!ks.length) return 0;
+  return ks.reduce(function (a, k) { return a + porMes[k]; }, 0) / ks.length;
+}
+function pintarFondoEmergencia() {
+  var s = sumas(), gf = gastosFijosPromedio(), meses = gf > 0 ? s.liquidos / gf : 0;
+  $('#res-fe').innerHTML =
+    '<div><dt>Activos líquidos</dt><dd>S/ ' + S(s.liquidos) + '</dd></div>' +
+    '<div><dt>Gastos fijos mensuales</dt><dd>S/ ' + S(gf) + '</dd></div>' +
+    '<div><dt>Cobertura</dt><dd class="' + (meses >= 3 ? 'pos' : meses >= 1.5 ? 'warn' : 'neg') + '">' +
+    (gf > 0 ? fP.format(meses) + ' meses' : '—') + '</dd></div>';
+  var n = $('#nota-fe');
+  if (gf <= 0) n.innerHTML = '<div class="msg info">Registra gastos en categorías fijas —vivienda, alimentación, transporte, servicios, salud, educación y deudas— para calcular tu cobertura.</div>';
+  else if (meses < 3) n.innerHTML = '<div class="msg err">Para llegar a tres meses de cobertura necesitas <strong>S/ ' +
+    S(Math.max(0, gf * 3 - s.liquidos)) + '</strong> adicionales en activos líquidos.</div>';
+  else n.innerHTML = '<div class="msg info">Tu fondo cubre el rango recomendado. El excedente por encima de seis meses rinde más en instrumentos de mayor plazo.</div>';
+}
+
+/* ---------- 10. INDICADORES Y GRÁFICOS ---------- */
+function indicadores() {
+  var mes = $('#i-mes').value || UI.mes;
+  var ing = 0, gas = 0, aho = 0;
+  E.movimientos.forEach(function (m) {
+    if (mesDe(m.fecha) !== mes) return;
+    if (m.tipo === 'Ingreso') ing += num(m.monto);
+    else { gas += num(m.monto); if (m.categoria === 'Ahorro e inversión') aho += num(m.monto); }
+  });
+  var base = ing || E.ingresoMensual;
+  var cuotas = E.deudas.reduce(function (a, d) {
+    return a + (num(d.cuota) || cuotaFrancesa(num(d.saldo), d.tcea, d.plazo || 12)); }, 0);
+  var s = sumas(), gf = gastosFijosPromedio();
+  var ej = ejecutadoPorCat(mes);
+  var tp = CATS.reduce(function (a, c) { return a + num(E.presupuesto[c.n]); }, 0);
+  var te = CATS.reduce(function (a, c) { return a + num(ej[c.n]); }, 0);
+
+  function nivel(v, ok, al, mayorEsMejor) {
+    if (!isFinite(v)) return '';
+    if (mayorEsMejor) return v >= ok ? 'ok' : v >= al ? 'al' : 'ex';
+    return v <= ok ? 'ok' : v <= al ? 'al' : 'ex';
+  }
+  /* el aporte a "Ahorro e inversión" se registra como gasto, por lo que se reincorpora */
+  var tasaAhorro = base ? (ing ? (ing - gas + aho) / ing : (aho / base)) : NaN;
+  var ratioDeuda = base ? cuotas / base : NaN;
+  var cobertura = gf ? s.liquidos / gf : NaN;
+  var liquidez = s.corrientes ? s.liquidos / s.corrientes : NaN;
+  var ejec = tp ? te / tp : NaN;
+
+  var lista = [
+    { t: 'Tasa de ahorro', v: isFinite(tasaAhorro) ? pct(tasaAhorro) : '—', f: '(Superávit + Aporte) ÷ Ingreso', r: 'Referencia: 20 % o más', n: nivel(tasaAhorro, 0.2, 0.1, true) },
+    { t: 'Ratio de endeudamiento', v: isFinite(ratioDeuda) ? pct(ratioDeuda) : '—', f: 'Cuotas ÷ Ingreso neto', r: 'Referencia: hasta 30 %', n: nivel(ratioDeuda, 0.3, 0.4, false) },
+    { t: 'Cobertura de emergencia', v: isFinite(cobertura) ? fP.format(cobertura) + ' meses' : '—', f: 'Líquidos ÷ Gastos fijos', r: 'Referencia: 3 a 6 meses', n: nivel(cobertura, 3, 1.5, true) },
+    { t: 'Liquidez', v: isFinite(liquidez) ? fP.format(liquidez) : '—', f: 'Líquidos ÷ Pasivos corrientes', r: 'Referencia: mayor que 1', n: nivel(liquidez, 1, 0.7, true) },
+    { t: 'Patrimonio neto', v: 'S/ ' + neg(s.neto), f: 'Activos − Pasivos', r: 'Referencia: creciente', n: s.neto > 0 ? 'ok' : s.neto === 0 ? 'al' : 'ex' },
+    { t: 'Ejecución presupuestal', v: isFinite(ejec) ? pct(ejec) : '—', f: 'Ejecutado ÷ Presupuestado', r: 'Referencia: cercana a 100 %', n: isFinite(ejec) ? (ejec > 1 ? 'ex' : ejec >= 0.9 ? 'al' : 'ok') : '' }
+  ];
+  $('#indicadores').innerHTML = lista.map(function (x) {
+    return '<div class="ind ' + x.n + '" title="' + esc(x.f) + '"><h4>' + x.t + '</h4>' +
+      '<div class="cifra">' + x.v + '</div><span class="form">' + esc(x.f) + '</span><span class="ref">' + x.r + '</span></div>';
+  }).join('');
+  return { mes: mes, ing: ing, gas: gas, ej: ej, tp: tp };
+}
+
+function baseChart() {
+  if (!window.Chart) return;
+  Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = '#4A5560';
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.font = { family: "'Public Sans', sans-serif", size: 11 };
+  Chart.defaults.animation.duration =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
+}
+function pintar(n, cfg, hay) {
+  var l = document.getElementById('l' + n), cv = document.getElementById('g' + n);
+  if (!l || !cv) return;
+  if (GRAF[n]) { GRAF[n].destroy(); GRAF[n] = null; }
+  if (!window.Chart) {
+    l.dataset.conDatos = '0';
+    l.querySelector('.sin-datos').textContent = 'No se pudo cargar la librería de gráficos. Revisa tu conexión y recarga la página.';
+    return;
+  }
+  l.dataset.conDatos = hay ? '1' : '0';
+  cv.style.display = hay ? 'block' : 'none';
+  if (hay) GRAF[n] = new Chart(cv, cfg);
+}
+var ejeS = { ticks: { callback: function (v) { return S(v); } }, grid: { color: '#EFEDE7' } };
+function tip() { return { callbacks: { label: function (c) {
+  return (c.dataset.label ? c.dataset.label + ': ' : '') + 'S/ ' + S(c.parsed.y != null ? c.parsed.y : c.parsed); } } }; }
+
+function pintarG1() {
+  var meses = mesesConDatos().filter(function (m) {
+    return E.movimientos.some(function (x) { return mesDe(x.fecha) === m; }); });
+  var ing = meses.map(function (m) { return E.movimientos.filter(function (x) {
+    return mesDe(x.fecha) === m && x.tipo === 'Ingreso'; }).reduce(function (a, x) { return a + num(x.monto); }, 0); });
+  var gas = meses.map(function (m) { return E.movimientos.filter(function (x) {
+    return mesDe(x.fecha) === m && x.tipo === 'Gasto'; }).reduce(function (a, x) { return a + num(x.monto); }, 0); });
+  pintar(1, { type: 'bar', data: { labels: meses.map(nombreMes), datasets: [
+    { label: 'Ingresos', data: ing, backgroundColor: '#1E7A5A' },
+    { label: 'Gastos', data: gas, backgroundColor: '#A82E1E' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tip() },
+      scales: { y: ejeS, x: { grid: { display: false } } } } }, meses.length > 0);
+}
+function pintarG2() {
+  var mes = $('#i-mes').value || UI.mes, ej = ejecutadoPorCat(mes);
+  var pares = Object.keys(ej).filter(function (k) { return ej[k] > 0; })
+    .map(function (k) { return [k, ej[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+  pintar(2, { type: 'doughnut', data: { labels: pares.map(function (p) { return p[0]; }),
+    datasets: [{ data: pares.map(function (p) { return p[1]; }), backgroundColor: COLORES, borderColor: '#fff', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '52%',
+      plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: function (c) {
+        var t = c.dataset.data.reduce(function (a, b) { return a + b; }, 0);
+        return c.label + ': S/ ' + S(c.parsed) + ' (' + fP.format(c.parsed / t * 100) + ' %)'; } } } } } }, pares.length > 0);
+}
+function pintarG3() {
+  var cierres = E.cierres.slice().sort(function (a, b) { return a.mes < b.mes ? -1 : 1; });
+  var meses = mesesConDatos().filter(function (m) {
+    return E.movimientos.some(function (x) { return mesDe(x.fecha) === m; }); });
+  var acum = 0, saldo = meses.map(function (m) {
+    E.movimientos.forEach(function (x) { if (mesDe(x.fecha) === m) acum += (x.tipo === 'Ingreso' ? 1 : -1) * num(x.monto); });
+    return acum; });
+  var etiquetas = cierres.length ? cierres.map(function (c) { return nombreMes(c.mes); }) : meses.map(nombreMes);
+  var ds = [];
+  if (cierres.length) ds.push({ label: 'Patrimonio neto', data: cierres.map(function (c) { return c.neto; }),
+    borderColor: '#5B3FA8', backgroundColor: 'rgba(91,63,168,.08)', fill: true, tension: .25, borderWidth: 2 });
+  if (!cierres.length && meses.length) ds.push({ label: 'Saldo acumulado', data: saldo,
+    borderColor: '#1E7A5A', backgroundColor: 'rgba(30,122,90,.08)', fill: true, tension: .25, borderWidth: 2 });
+  pintar(3, { type: 'line', data: { labels: etiquetas, datasets: ds },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tip() },
+      scales: { y: ejeS, x: { grid: { display: false } } } } }, ds.length > 0);
+}
+function pintarG4() {
+  var mes = $('#i-mes').value || UI.mes, ej = ejecutadoPorCat(mes);
+  var cats = CATS.filter(function (c) { return num(E.presupuesto[c.n]) > 0 || num(ej[c.n]) > 0; });
+  pintar(4, { type: 'bar', data: { labels: cats.map(function (c) { return c.n; }), datasets: [
+    { label: 'Presupuestado', data: cats.map(function (c) { return num(E.presupuesto[c.n]); }), backgroundColor: '#B9B1A2' },
+    { label: 'Ejecutado', data: cats.map(function (c) { return num(ej[c.n]); }), backgroundColor: '#5B3FA8' }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': S/ ' + S(c.parsed.x); } } } },
+      scales: { x: { ticks: { callback: function (v) { return S(v); } }, grid: { color: '#EFEDE7' } }, y: { grid: { display: false } } } } },
+    cats.length > 0);
+}
+function pintarG5() {
+  var d = SIM.ic;
+  pintar(5, d ? { type: 'line', data: { labels: d.serie.map(function (_, k) { return 'Año ' + k; }), datasets: [
+    { label: 'Capital acumulado', data: d.serie, borderColor: '#5B3FA8', backgroundColor: 'rgba(91,63,168,.1)', fill: true, tension: .25, borderWidth: 2 },
+    { label: 'Total aportado', data: d.aportes, borderColor: '#B9B1A2', borderDash: [5, 4], fill: false, tension: .25, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tip() },
+      scales: { y: ejeS, x: { grid: { display: false } } } } } : {}, !!d);
+}
+function pintarG6() {
+  var d = SIM.comp;
+  if (!d) { pintar(6, {}, false); return; }
+  var n = Math.max(d.av.serie.length, d.bn.serie.length);
+  var etq = []; for (var k = 0; k < n; k++) etq.push('Mes ' + k);
+  pintar(6, { type: 'line', data: { labels: etq, datasets: [
+    { label: 'Avalancha', data: d.av.serie, borderColor: '#5B3FA8', fill: false, tension: .15, borderWidth: 2, pointRadius: 0 },
+    { label: 'Bola de nieve', data: d.bn.serie, borderColor: '#B07C10', borderDash: [5, 4], fill: false, tension: .15, borderWidth: 2, pointRadius: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: tip() },
+      scales: { y: ejeS, x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } } } } }, true);
+}
+function pintarGraficos() {
+  if ($('#p-ind').hidden) return;
+  pintarG1(); pintarG2(); pintarG3(); pintarG4(); pintarG5(); pintarG6();
+}
+
+/* ---------- 11. CSV Y JSON ---------- */
+function bajar(nombre, texto, mime) {
+  var b = new Blob(['\ufeff' + texto], { type: mime + ';charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = nombre;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+}
+function exportarCSV() {
+  var cab = ['Fecha', 'Tipo', 'Categoria', 'Descripcion', 'Monto', 'Medio'];
+  var filas = E.movimientos.map(function (m) {
+    return [m.fecha, m.tipo, m.categoria, String(m.descripcion || '').replace(/[;\r\n]/g, ' '),
+            num(m.monto).toFixed(2), m.medio].join(';');
+  });
+  bajar('movimientos.csv', [cab.join(';')].concat(filas).join('\r\n'), 'text/csv');
+}
+function importarCSV(texto) {
+  var lineas = texto.replace(/^\ufeff/, '').split(/\r?\n/).filter(function (l) { return l.trim(); });
+  if (!lineas.length) return;
+  var sep = (lineas[0].split(';').length >= lineas[0].split(',').length) ? ';' : ',';
+  var inicio = /fecha/i.test(lineas[0]) ? 1 : 0, n = 0;
+  for (var k = inicio; k < lineas.length; k++) {
+    var c = lineas[k].split(sep);
+    if (c.length < 5) continue;
+    var monto = num(String(c[4]).replace(/[^\d.,-]/g, '').replace(',', '.'));
+    if (!monto) continue;
+    E.movimientos.push({ id: id(), fecha: (c[0] || hoy()).trim().slice(0, 10),
+      tipo: /ingreso/i.test(c[1]) ? 'Ingreso' : 'Gasto', categoria: (c[2] || 'Otros').trim(),
+      descripcion: (c[3] || '—').trim(), monto: monto, medio: (c[5] || 'Efectivo').trim() });
+    n++;
+  }
+  llenarSelectMeses(); todo();
+  $('#estado-guardado').textContent = 'Se importaron ' + n + ' movimientos';
+}
+function ejemplo() {
+  var d = new Date(), ms = [];
+  for (var k = 3; k >= 0; k--) { var x = new Date(d.getFullYear(), d.getMonth() - k, 5); ms.push(x.toISOString().slice(0, 7)); }
+  var plan = [['Sueldo', 'Ingreso', 5400, 'Sueldo neto', 'Transferencia'],
+    ['Vivienda', 'Gasto', 1400, 'Alquiler', 'Transferencia'], ['Alimentación', 'Gasto', 900, 'Mercado y despensa', 'Débito'],
+    ['Transporte', 'Gasto', 260, 'Combustible y pasajes', 'Efectivo'], ['Servicios', 'Gasto', 240, 'Luz, agua e internet', 'Débito'],
+    ['Salud', 'Gasto', 150, 'Consulta y medicinas', 'Débito'], ['Educación', 'Gasto', 320, 'Pensión escolar', 'Transferencia'],
+    ['Deudas', 'Gasto', 480, 'Cuota tarjeta', 'Crédito'], ['Ocio', 'Gasto', 290, 'Salidas y suscripciones', 'Crédito'],
+    ['Otros', 'Gasto', 180, 'Varios', 'Yape / Plin'], ['Ahorro e inversión', 'Gasto', 700, 'Aporte mensual', 'Transferencia']];
+  E.movimientos = [];
+  ms.forEach(function (m, i) {
+    plan.forEach(function (p, j) {
+      var v = p[2] * (1 + (((i * 7 + j * 3) % 11) - 5) / 100);
+      E.movimientos.push({ id: id(), fecha: m + '-' + String(Math.min(28, 3 + j * 2)).padStart(2, '0'),
+        tipo: p[1], categoria: p[0], descripcion: p[3], monto: Math.round(v * 100) / 100, medio: p[4] });
+    });
+  });
+  E.ingresoMensual = 5400;
+  CATS.forEach(function (c) { E.presupuesto[c.n] = Math.round(5400 * c.pct) / 100; });
+  E.deudas = [
+    { id: id(), acreedor: 'Tarjeta de crédito', saldo: 6000, tcea: 85, cuota: 300, plazo: 24 },
+    { id: id(), acreedor: 'Préstamo de consumo', saldo: 12000, tcea: 28, cuota: 600, plazo: 24 },
+    { id: id(), acreedor: 'Crédito vehicular', saldo: 3000, tcea: 14, cuota: 200, plazo: 18 }];
+  E.activos = [
+    { id: id(), nombre: 'Cuenta de ahorros', monto: 9000, corriente: true },
+    { id: id(), nombre: 'Depósito a plazo', monto: 12000, corriente: true },
+    { id: id(), nombre: 'Fondo de AFP', monto: 48000, corriente: false },
+    { id: id(), nombre: 'Vehículo', monto: 32000, corriente: false }];
+  E.pasivos = [
+    { id: id(), nombre: 'Tarjeta de crédito', monto: 6000, corriente: true },
+    { id: id(), nombre: 'Préstamo de consumo', monto: 12000, corriente: false },
+    { id: id(), nombre: 'Crédito vehicular', monto: 3000, corriente: false }];
+  E.cierres = ms.map(function (m, i) {
+    var a = 95000 + i * 2600, p = 24000 - i * 1300;
+    return { mes: m, activos: a, pasivos: p, neto: a - p };
+  });
+  $('#p-ingreso').value = 5400; $('#c-pago').value = 1500;
+  UI.mes = ms[ms.length - 1];
+  llenarSelectMeses(); todo();
+  calcularAmortizacion(); simularInteresCompuesto(); simularMeta(); compararEstrategias();
+}
+
+/* ---------- 12. RENDER GLOBAL Y ARRANQUE ---------- */
+function todo() {
+  pintarMovs(); pintarPresupuesto(); pintarDeudas(); pintarPatrimonio();
+  pintarFondoEmergencia(); indicadores(); pintarGraficos(); guardar();
+}
+function activarTab(idTab) {
+  UI.tab = idTab;
+  $$('.tab').forEach(function (b) {
+    var on = b.id === idTab;
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    document.getElementById(b.getAttribute('aria-controls')).hidden = !on;
+  });
+  if (idTab === 't-ind') pintarGraficos();
+}
+
+function conectar() {
+  /* pestañas */
+  $$('.tab').forEach(function (b) { b.addEventListener('click', function () { activarTab(b.id); }); });
+
+  /* movimientos */
+  $('#m-tipo').addEventListener('change', llenarSelectCats);
+  $('#btn-mov-add').addEventListener('click', agregarMov);
+  $('#m-monto').addEventListener('keydown', function (e) { if (e.key === 'Enter') agregarMov(); });
+  ['#f-mes', '#f-tipo', '#f-cat'].forEach(function (s) { $(s).addEventListener('change', function () {
+    if (s === '#f-mes' && $(s).value) { UI.mes = $(s).value; llenarSelectMeses(); }
+    pintarMovs(); }); });
+  $('#f-buscar').addEventListener('input', pintarMovs);
+  $$('#tb-mov thead th[data-orden]').forEach(function (th) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function () {
+      var k = th.getAttribute('data-orden');
+      if (UI.orden === k) UI.asc = !UI.asc; else { UI.orden = k; UI.asc = true; }
+      pintarMovs();
+    });
+  });
+  $('#tb-mov').addEventListener('change', function (e) {
+    var fila = e.target.closest('tr[data-fila]'), c = e.target.getAttribute('data-c');
+    if (!fila || !c) return;
+    var m = E.movimientos.filter(function (x) { return x.id === fila.getAttribute('data-fila'); })[0];
+    if (!m) return;
+    m[c] = c === 'monto' ? num(e.target.value) : e.target.value;
+    if (c === 'fecha') llenarSelectMeses();
+    todo();
+  });
+  $('#tb-mov').addEventListener('click', function (e) {
+    var b = e.target.getAttribute && e.target.getAttribute('data-borrar');
+    if (!b) return;
+    E.movimientos = E.movimientos.filter(function (x) { return x.id !== b; });
+    llenarSelectMeses(); todo();
+  });
+
+  /* presupuesto */
+  $('#btn-5030').addEventListener('click', aplicar503020);
+  $('#p-mes').addEventListener('change', function () { UI.mes = $('#p-mes').value; llenarSelectMeses(); todo(); });
+  $('#p-ingreso').addEventListener('change', function () { E.ingresoMensual = num($('#p-ingreso').value); todo(); });
+  $('#tb-pre').addEventListener('change', function (e) {
+    var k = e.target.getAttribute('data-pre'); if (!k) return;
+    E.presupuesto[k] = num(e.target.value); todo();
+  });
+
+  /* deudas */
+  $('#btn-deu-add').addEventListener('click', agregarDeuda);
+  $('#tb-deu').addEventListener('change', function (e) {
+    var fila = e.target.closest('tr[data-deuda]'), c = e.target.getAttribute('data-c');
+    if (!fila || !c) return;
+    var d = E.deudas.filter(function (x) { return x.id === fila.getAttribute('data-deuda'); })[0];
+    if (!d) return;
+    d[c] = c === 'acreedor' ? e.target.value : num(e.target.value);
+    if (c === 'saldo' || c === 'tcea' || c === 'plazo') d.cuota = Math.round(cuotaFrancesa(num(d.saldo), d.tcea, d.plazo || 12) * 100) / 100;
+    SIM.comp = null; $('#res-comp').innerHTML = ''; todo();
+  });
+  $('#tb-deu').addEventListener('click', function (e) {
+    var b = e.target.getAttribute && e.target.getAttribute('data-borrar-deuda');
+    if (!b) return;
+    E.deudas = E.deudas.filter(function (x) { return x.id !== b; });
+    SIM.comp = null; $('#res-comp').innerHTML = ''; todo();
+  });
+  $('#btn-amort').addEventListener('click', calcularAmortizacion);
+  $('#btn-comp').addEventListener('click', compararEstrategias);
+
+  /* patrimonio */
+  $('#btn-pt-add').addEventListener('click', function () {
+    var monto = num($('#pt-monto').value);
+    if (monto <= 0) { $('#pt-monto').focus(); return; }
+    var o = { id: id(), nombre: $('#pt-nombre').value.trim() || 'Concepto', monto: monto, corriente: $('#pt-corriente').checked };
+    ($('#pt-clase').value === 'activo' ? E.activos : E.pasivos).push(o);
+    $('#pt-nombre').value = ''; $('#pt-monto').value = ''; $('#pt-corriente').checked = false;
+    todo();
+  });
+  ['#tb-act', '#tb-pas'].forEach(function (t) {
+    $(t).addEventListener('change', function (e) {
+      var fila = e.target.closest('tr[data-pt]'), c = e.target.getAttribute('data-c');
+      if (!fila || !c) return;
+      var lista = E[fila.getAttribute('data-clase')];
+      var o = lista.filter(function (x) { return x.id === fila.getAttribute('data-pt'); })[0];
+      if (!o) return;
+      o[c] = c === 'monto' ? num(e.target.value) : c === 'corriente' ? e.target.checked : e.target.value;
+      todo();
+    });
+    $(t).addEventListener('click', function (e) {
+      var b = e.target.getAttribute && e.target.getAttribute('data-borrar-pt');
+      if (!b) return;
+      var clase = e.target.getAttribute('data-clase');
+      E[clase] = E[clase].filter(function (x) { return x.id !== b; });
+      todo();
+    });
+  });
+  $('#btn-cierre').addEventListener('click', guardarCierre);
+  $('#tb-cierres').addEventListener('click', function (e) {
+    var b = e.target.getAttribute && e.target.getAttribute('data-borrar-cierre');
+    if (!b) return;
+    E.cierres = E.cierres.filter(function (c) { return c.mes !== b; });
+    todo();
+  });
+
+  /* simuladores */
+  $('#btn-sim-ic').addEventListener('click', simularInteresCompuesto);
+  $('#btn-sim-meta').addEventListener('click', simularMeta);
+
+  /* indicadores */
+  $('#i-mes').addEventListener('change', function () { UI.mes = $('#i-mes').value; llenarSelectMeses(); indicadores(); pintarGraficos(); });
+
+  /* datos */
+  $('#btn-demo').addEventListener('click', ejemplo);
+  $('#btn-csv-exp').addEventListener('click', exportarCSV);
+  $('#btn-json-exp').addEventListener('click', function () { bajar('copia-finanzas.json', JSON.stringify(E, null, 2), 'application/json'); });
+  $('#btn-csv-imp').addEventListener('click', function () { $('#archivo-csv').click(); });
+  $('#archivo-csv').addEventListener('change', function (e) {
+    var f = e.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { importarCSV(String(r.result)); e.target.value = ''; };
+    r.readAsText(f, 'utf-8');
+  });
+  $('#btn-borrar').addEventListener('click', function () {
+    if (!confirm('Se eliminarán todos los movimientos, presupuestos, deudas, activos, pasivos y cierres guardados en este navegador. Esta acción no se puede deshacer. ¿Continuar?')) return;
+    E = { movimientos: [], presupuesto: {}, ingresoMensual: 0, deudas: [], activos: [], pasivos: [], cierres: [] };
+    SIM = { ic: null, comp: null };
+    $('#p-ingreso').value = ''; $('#c-pago').value = '';
+    $('#res-comp').innerHTML = ''; $('#res-ic').innerHTML = ''; $('#res-meta').innerHTML = '';
+    $('#tb-amort tbody').innerHTML = ''; $('#tb-amort tfoot').innerHTML = ''; $('#res-amort').innerHTML = '';
+    llenarSelectMeses(); todo();
+    $('#estado-guardado').textContent = 'Datos eliminados';
+  });
+
+  /* anclas de la barra superior que apuntan al panel de indicadores */
+  $('.topnav a[href="#panel-f-link"]').addEventListener('click', function () { activarTab('t-ind'); });
+}
+
+/* carga diferida de la fotografía: solo se solicita si data-foto tiene una ruta */
+function cargarFoto() {
+  var f = $('#foto'), ruta = f && f.getAttribute('data-foto');
+  if (!ruta) return;
+  var t = new Image();
+  t.onload = function () { f.src = ruta; };
+  t.src = ruta;
+}
+
+function arrancar() {
+  baseChart();
+  cargarFoto();
+  pintarTeoria();
+  $('#m-fecha').value = hoy();
+  $('#ci-mes').value = mesDe(hoy());
+  llenarSelectCats();
+  conectar();
+  Store.detectar().then(Store.leer).then(function (d) {
+    if (d && typeof d === 'object') {
+      ['movimientos', 'deudas', 'activos', 'pasivos', 'cierres'].forEach(function (k) {
+        if (Array.isArray(d[k])) E[k] = d[k];
+      });
+      if (d.presupuesto && typeof d.presupuesto === 'object') E.presupuesto = d.presupuesto;
+      E.ingresoMensual = num(d.ingresoMensual);
+      if (E.ingresoMensual) $('#p-ingreso').value = E.ingresoMensual;
+    }
+    llenarSelectMeses();
+    activarTab('t-mov');
+    pintarMovs(); pintarPresupuesto(); pintarDeudas(); pintarPatrimonio();
+    pintarFondoEmergencia(); indicadores();
+    if (Store.modo() === 'memoria') $('#estado-guardado').textContent = 'Cálculo local · los datos durarán solo esta sesión';
+  });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
+else arrancar();
+})();
+</script>
+</body>
+</html>
